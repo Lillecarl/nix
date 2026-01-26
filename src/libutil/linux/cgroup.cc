@@ -76,10 +76,16 @@ CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
     return stats;
 }
 
-static CgroupStats destroyCgroup(const std::filesystem::path & cgroup, bool returnStats)
+static void deleteCgroup(const std::filesystem::path & cgroup)
+{
+    if (rmdir(cgroup.c_str()) == -1)
+        throw SysError("deleting cgroup %s", PathFmt(cgroup));
+}
+
+static void killCgroupProcesses(const std::filesystem::path & cgroup)
 {
     if (!pathExists(cgroup))
-        return {};
+        return;
 
     auto procsFile = cgroup / "cgroup.procs";
 
@@ -98,7 +104,9 @@ static CgroupStats destroyCgroup(const std::filesystem::path & cgroup, bool retu
         checkInterrupt();
         if (entry.symlink_status().type() != std::filesystem::file_type::directory)
             continue;
-        destroyCgroup(cgroup / entry.path().filename(), false);
+        auto childCgroup = cgroup / entry.path().filename();
+        killCgroupProcesses(childCgroup);
+        deleteCgroup(childCgroup);
     }
 
     int round = 1;
@@ -139,20 +147,17 @@ static CgroupStats destroyCgroup(const std::filesystem::path & cgroup, bool retu
         std::this_thread::sleep_for(sleep);
         round++;
     }
-
-    CgroupStats stats;
-    if (returnStats)
-        stats = getCgroupStats(cgroup);
-
-    if (rmdir(cgroup.c_str()) == -1)
-        throw SysError("deleting cgroup %s", PathFmt(cgroup));
-
-    return stats;
 }
 
 CgroupStats destroyCgroup(const std::filesystem::path & cgroup)
 {
-    return destroyCgroup(cgroup, true);
+    if (!pathExists(cgroup))
+        return {};
+
+    killCgroupProcesses(cgroup);
+    CgroupStats stats = getCgroupStats(cgroup);
+    deleteCgroup(cgroup);
+    return stats;
 }
 
 CanonPath getCurrentCgroup()
