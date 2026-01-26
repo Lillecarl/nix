@@ -24,6 +24,8 @@
 
 namespace nix {
 
+using namespace nix::linux;
+
 static void setupSeccomp()
 {
     if (!settings.filterSyscalls)
