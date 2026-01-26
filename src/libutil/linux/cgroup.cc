@@ -12,6 +12,7 @@
 
 #include <dirent.h>
 #include <mntent.h>
+#include <sys/stat.h>
 
 namespace nix::linux {
 
@@ -177,6 +178,35 @@ CanonPath getRootCgroup()
 {
     static auto rootCgroup = getCurrentCgroup();
     return rootCgroup;
+}
+
+AutoDestroyCgroup::AutoDestroyCgroup(std::filesystem::path path)
+    : cgroupPath(std::move(path))
+{
+    if (mkdir(cgroupPath.c_str(), 0755) != 0)
+        throw SysError("creating cgroup %s", PathFmt(cgroupPath));
+}
+
+AutoDestroyCgroup::~AutoDestroyCgroup() noexcept
+{
+    try {
+        if (!cgroupPath.empty()) {
+            killCgroupProcesses(cgroupPath);
+            deleteCgroup(cgroupPath);
+        }
+    } catch (...) {
+        ignoreExceptionInDestructor();
+    }
+}
+
+CgroupStats AutoDestroyCgroup::destroy()
+{
+    if (cgroupPath.empty())
+        return {};
+
+    auto stats = destroyCgroup(cgroupPath);
+    cancel();
+    return stats;
 }
 
 } // namespace nix::linux
