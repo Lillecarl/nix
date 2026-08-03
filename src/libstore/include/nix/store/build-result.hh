@@ -193,6 +193,18 @@ struct BuildResult
      */
     std::optional<std::chrono::microseconds> cpuUser, cpuSystem;
 
+    /**
+     * Merge `timesBuilt`, the timing fields and the resource fields of
+     * `other`, usually the result of a sub-goal, into this result.
+     *
+     * Takes the maximum, not the sum: the merged sub-goals are the
+     * outputs of one derivation, so they all report the same build.
+     *
+     * Does not touch `inner`, so a goal can merge before it reports
+     * success or failure.
+     */
+    void mergeBuildStats(const BuildResult & other);
+
     bool operator==(const BuildResult &) const noexcept;
     std::strong_ordering operator<=>(const BuildResult &) const noexcept;
 };

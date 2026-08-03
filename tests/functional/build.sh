@@ -287,3 +287,45 @@ if isDaemonNewer "2.34pre"; then
       --no-link \
       | grepQuiet "local builds are disabled"
 fi
+
+# `nix build --json` must report the timing of each build that it does.
+# The innermost goal sets these fields. This test makes sure that the outer
+# goals keep them. If `DerivationTrampolineGoal` does not merge the resource
+# usage of its sub-goals, the fields are lost.
+#
+# This test needs a store that it can clear, because the code above already
+# builds this path. `clearStore` is not possible on NixOS, and so the whole
+# test does not run there. The suite covers this case on the other systems.
+if isDaemonNewer "2.36pre" && ! isTestOnNixOS; then
+    clearStore
+    nix build -f multiple-outputs.nix --json a --no-link | jq --exit-status '
+      (.[0] |
+        (.startTime > 0) and
+        (.stopTime >= .startTime))
+    '
+
+    # Nix did not build this path, because it is already valid. Thus the
+    # result has no timing.
+    nix build -f multiple-outputs.nix --json a --no-link | jq --exit-status '
+      (.[0] | has("startTime") | not)
+    '
+
+    # Do the same through the daemon. The daemon sends `BuildResult` through
+    # the worker protocol. Thus this part shows that the fields survive the
+    # goal *and* the protocol. A client of the daemon is the case that the
+    # original defect made visible.
+    clearStore
+    startDaemon
+    nix build -f multiple-outputs.nix --json a --no-link | jq --exit-status '
+      (.[0] |
+        (.startTime > 0) and
+        (.stopTime >= .startTime))
+    '
+
+    # The daemon must not invent a value either. Nix did not build this path,
+    # because it is already valid.
+    nix build -f multiple-outputs.nix --json a --no-link | jq --exit-status '
+      (.[0] | has("startTime") | not)
+    '
+    killDaemon
+fi
