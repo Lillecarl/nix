@@ -459,6 +459,10 @@ void ChrootLinuxDerivationBuilder::prepareUser()
         if (!pathExists(rootCgroupPath))
             throw Error("expected cgroup directory %s", PathFmt(rootCgroupPath));
 
+        /* The memory controller is not enabled here. The daemon enables
+           it once, at start. See `daemon.cc`. A write here would fail
+           with `EBUSY`, because `rootCgroupPath` holds this process. */
+
         static std::atomic<unsigned int> counter{0};
 
         cgroup = rootCgroupPath
@@ -948,6 +952,8 @@ void ChrootLinuxDerivationBuilder::killSandbox(bool getStats)
         if (getStats) {
             buildResult.cpuUser = stats.cpuUser;
             buildResult.cpuSystem = stats.cpuSystem;
+            buildResult.memoryPeak = stats.memoryPeak;
+            buildResult.memorySwapPeak = stats.memorySwapPeak;
         }
         return;
     }

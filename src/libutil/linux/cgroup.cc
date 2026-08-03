@@ -49,6 +49,42 @@ StringMap getCgroups(const std::filesystem::path & cgroupFile)
     return cgroups;
 }
 
+bool tryEnableCgroupControllers(const std::filesystem::path & cgroup, std::string_view controllers)
+{
+    auto subtreeControlPath = cgroup / "cgroup.subtree_control";
+
+    try {
+        writeFile(subtreeControlPath, controllers);
+        return true;
+    } catch (SystemError & e) {
+        /* A failure is usual in some correct conditions. For example,
+           `cgroup` still has member processes (`EBUSY`), or the system
+           did not delegate the cgroup to us (`EACCES`). The caller must
+           accept that the applicable statistics are not available. */
+        debug("cannot enable cgroup controllers '%s' in %s: %s", controllers, PathFmt(cgroup), e.what());
+        return false;
+    }
+}
+
+/**
+ * Read a cgroup "single value" file. Such a file contains one decimal
+ * number. Return `std::nullopt` if the file does not exist, or if the
+ * content is not a number. The file does not exist if the applicable
+ * controller is not enabled, or if the kernel is too old.
+ */
+static std::optional<uint64_t> readCgroupSingleValue(const std::filesystem::path & path)
+{
+    if (!pathExists(path))
+        return std::nullopt;
+
+    try {
+        return string2Int<uint64_t>(trim(readFile(path)));
+    } catch (SystemError & e) {
+        debug("cannot read cgroup file %s: %s", PathFmt(path), e.what());
+        return std::nullopt;
+    }
+}
+
 CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
 {
     CgroupStats stats;
@@ -72,6 +108,12 @@ CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
             }
         }
     }
+
+    /* These two files are present only if the memory controller is
+       enabled for this cgroup. `memory.peak` needs Linux 5.19 or later.
+       `memory.swap.peak` needs Linux 6.5 or later. */
+    stats.memoryPeak = readCgroupSingleValue(cgroup / "memory.peak");
+    stats.memorySwapPeak = readCgroupSingleValue(cgroup / "memory.swap.peak");
 
     return stats;
 }

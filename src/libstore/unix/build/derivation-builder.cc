@@ -216,11 +216,12 @@ SingleDrvOutputs DerivationBuilderImpl::unprepareBuild()
 
     if (buildResult.cpuUser && buildResult.cpuSystem) {
         debug(
-            "builder for '%s' terminated with status %d, user CPU %.3fs, system CPU %.3fs",
+            "builder for '%s' terminated with status %d, user CPU %.3fs, system CPU %.3fs%s",
             store.printStorePath(drvPath),
             status,
             ((double) buildResult.cpuUser->count()) / 1000000,
-            ((double) buildResult.cpuSystem->count()) / 1000000);
+            ((double) buildResult.cpuSystem->count()) / 1000000,
+            buildResult.memoryPeak ? fmt(", peak memory %s", renderSize(*buildResult.memoryPeak)) : std::string{});
     }
 
     /* Check the exit status. */

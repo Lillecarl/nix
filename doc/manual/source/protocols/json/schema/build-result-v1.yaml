@@ -49,6 +49,32 @@ properties:
     description: |
       System CPU time the build took, in microseconds.
 
+  memoryPeak:
+    type: integer
+    minimum: 0
+    title: Peak memory usage
+    description: |
+      The peak memory usage of the build, in bytes.
+
+      This field is present only if the build ran in a cgroup with the memory
+      controller enabled.
+
+      On a host that swaps, this value is less than the true memory demand of the
+      build. In cgroup v2, the kernel removes the pages that go to swap from the memory
+      usage of the cgroup, and adds them to the swap usage. Refer to `memorySwapPeak`.
+
+  memorySwapPeak:
+    type: integer
+    minimum: 0
+    title: Peak swap usage
+    description: |
+      The peak swap usage of the build, in bytes.
+
+      This field is present only if the build ran in a cgroup with the memory
+      controller enabled, on Linux 6.5 or later, and with a kernel that has swap
+      support. Without swap support the kernel does not make the `memory.swap.peak`
+      file, and Nix reports no value.
+
 "$defs":
   success:
     type: object

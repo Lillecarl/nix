@@ -3,6 +3,7 @@
 
 #include <string>
 #include <chrono>
+#include <cstdint>
 #include <optional>
 
 #include "nix/store/derived-path.hh"
@@ -192,6 +193,19 @@ struct BuildResult
      * User and system CPU time the build took.
      */
     std::optional<std::chrono::microseconds> cpuUser, cpuSystem;
+
+    /**
+     * The peak memory usage and the peak swap usage of the build, in
+     * bytes.
+     *
+     * These two fields are available only if the build ran in a cgroup
+     * with the memory controller enabled. On a host that swaps,
+     * `memoryPeak` alone is less than the true memory demand of the
+     * build. In cgroup v2, the kernel removes the pages that go to swap
+     * from the memory usage of the cgroup, and adds them to the swap
+     * usage.
+     */
+    std::optional<uint64_t> memoryPeak, memorySwapPeak;
 
     /**
      * Merge the statistics of `other` into this result. The statistics
