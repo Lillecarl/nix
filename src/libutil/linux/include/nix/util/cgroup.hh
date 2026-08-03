@@ -2,6 +2,7 @@
 ///@file
 
 #include <chrono>
+#include <cstdint>
 #include <optional>
 #include <filesystem>
 
@@ -17,6 +18,13 @@ StringMap getCgroups(const std::filesystem::path & cgroupFile);
 struct CgroupStats
 {
     std::optional<std::chrono::microseconds> cpuUser, cpuSystem;
+
+    /**
+     * Peak memory and peak swap usage, in bytes. Set only if the memory
+     * controller is enabled for the cgroup and the kernel has the file:
+     * `memory.peak` needs Linux 5.19, `memory.swap.peak` Linux 6.5.
+     */
+    std::optional<uint64_t> memoryPeak, memorySwapPeak;
 };
 
 /**
