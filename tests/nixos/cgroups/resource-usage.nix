@@ -14,5 +14,8 @@ runCommand "resource-usage"
       i=$((i + 1))
     done
 
-    echo $i > $out
+    # About 64 MiB of anonymous memory; the test expects memoryPeak > 32 MiB.
+    ballast=$(head -c 67108864 /dev/zero | tr "\0" "x")
+
+    echo $i ''${#ballast} > $out
   ''
