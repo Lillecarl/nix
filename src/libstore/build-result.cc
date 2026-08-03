@@ -59,6 +59,24 @@ unsigned int ExitStatusFlags::failingExitStatus() const
     return mask ? mask : 1;
 }
 
+void BuildResult::mergeBuildStats(const BuildResult & other)
+{
+    timesBuilt = std::max(timesBuilt, other.timesBuilt);
+
+    /* Take the earliest start and the latest stop. Thus the interval
+       covers all of the merged builds. */
+    if (other.startTime != 0 && (startTime == 0 || other.startTime < startTime))
+        startTime = other.startTime;
+    stopTime = std::max(stopTime, other.stopTime);
+
+    auto mergeMax = [](auto & acc, const auto & val) {
+        if (val)
+            acc = acc ? std::max(*acc, *val) : *val;
+    };
+    mergeMax(cpuUser, other.cpuUser);
+    mergeMax(cpuSystem, other.cpuSystem);
+}
+
 bool BuildResult::operator==(const BuildResult &) const noexcept = default;
 std::strong_ordering BuildResult::operator<=>(const BuildResult &) const noexcept = default;
 

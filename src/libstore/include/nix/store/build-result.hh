@@ -193,6 +193,27 @@ struct BuildResult
      */
     std::optional<std::chrono::microseconds> cpuUser, cpuSystem;
 
+    /**
+     * Merge the statistics of `other` into this result. The statistics
+     * are `timesBuilt`, the timing fields and the resource fields.
+     * `other` is usually the result of a sub-goal.
+     *
+     * This function takes the *maximum* of the resource fields, and not
+     * the sum. The sub-goals that it merges are the outputs of one
+     * derivation. All of these outputs come from one build, and thus
+     * they report the same values. A sum multiplies the values by the
+     * number of the outputs.
+     *
+     * This function does not touch `inner`. Thus a caller can merge the
+     * statistics before it reports a success or a failure.
+     *
+     * `DerivationTrampolineGoal` is the only caller in the tree. The
+     * function stays public because the unit tests call it directly. The
+     * rule about the maximum needs a test that states it, and a test that
+     * goes through the goal cannot state it as clearly.
+     */
+    void mergeBuildStats(const BuildResult & other);
+
     bool operator==(const BuildResult &) const noexcept;
     std::strong_ordering operator<=>(const BuildResult &) const noexcept;
 };
