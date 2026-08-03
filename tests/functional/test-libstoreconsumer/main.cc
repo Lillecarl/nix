@@ -28,6 +28,18 @@ int main(int argc, char ** argv)
         const auto results = store->getBuilder()->buildPathsWithResults(paths, bmNormal);
 
         for (const auto & result : results) {
+            /* Print the statistics of every result, and not only of a
+               result that reports a success. A consumer of the libstore
+               API gets these fields for a build that fails as well.
+               `nix build --json` cannot show this, because it prints the
+               JSON only after a build that succeeds.
+
+               Print to stderr, because stdout carries the output paths. */
+            std::cerr << "status=" << (result.tryGetSuccess() ? "success" : "failure") << "\n";
+            std::cerr << "timesBuilt=" << result.timesBuilt << "\n";
+            std::cerr << "startTime=" << result.startTime << "\n";
+            std::cerr << "stopTime=" << result.stopTime << "\n";
+
             if (auto * successP = result.tryGetSuccess()) {
                 for (const auto & [outputName, realisation] : successP->builtOutputs) {
                     std::cout << store->printStorePath(realisation.outPath) << "\n";
