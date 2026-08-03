@@ -534,6 +534,68 @@ VERSIONED_CHARACTERIZATION_TEST(
 
 VERSIONED_CHARACTERIZATION_TEST(
     WorkerProtoTest,
+    buildResult_memory,
+    "build-result-memory",
+    (WorkerProto::Version{
+        .number =
+            {
+                .major = 1,
+                .minor = 38,
+            },
+        .features = {"build-result-memory", "realisation-with-path-not-hash"},
+    }),
+    ({
+        using namespace std::literals::chrono_literals;
+        std::tuple<BuildResult, BuildResult, BuildResult> t{
+            BuildResult{.inner{BuildResult::Failure{{
+                .status = BuildResult::Failure::OutputRejected,
+                .msg = HintFmt("no idea why"),
+            }}}},
+            BuildResult{
+                .inner{BuildResult::Failure{{
+                    .status = BuildResult::Failure::NotDeterministic,
+                    .msg = HintFmt("no idea why"),
+                    .isNonDeterministic = true,
+                }}},
+                .timesBuilt = 3,
+                .startTime = 30,
+                .stopTime = 50,
+                /* Nix reports the memory statistics of a failed build too. */
+                .memoryPeak = 1234567890,
+            },
+            BuildResult{
+                .inner{BuildResult::Success{
+                    .status = BuildResult::Success::Built,
+                    .builtOutputs =
+                        {
+                            {
+                                "foo",
+                                {
+                                    .outPath = StorePath{"g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-foo"},
+                                },
+                            },
+                            {
+                                "bar",
+                                {
+                                    .outPath = StorePath{"g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-bar"},
+                                },
+                            },
+                        },
+                }},
+                .timesBuilt = 1,
+                .startTime = 30,
+                .stopTime = 50,
+                .cpuUser = std::chrono::microseconds(500s),
+                .cpuSystem = std::chrono::microseconds(604s),
+                .memoryPeak = 1234567890,
+                .memorySwapPeak = 987654321,
+            },
+        };
+        t;
+    }))
+
+VERSIONED_CHARACTERIZATION_TEST(
+    WorkerProtoTest,
     keyedBuildResult_1_29,
     "keyed-build-result-1.29",
     (WorkerProto::Version{
