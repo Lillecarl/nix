@@ -71,6 +71,11 @@ CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
                     stats.cpuSystem = std::chrono::microseconds(*n);
             }
         }
+    } else if (pathExists(cgroup)) {
+        /* MUTATION: a cgroup without `cpu.stat` reports zero, and not an
+           absent value. See the commit message. */
+        stats.cpuUser = std::chrono::microseconds(0);
+        stats.cpuSystem = std::chrono::microseconds(0);
     }
 
     return stats;
