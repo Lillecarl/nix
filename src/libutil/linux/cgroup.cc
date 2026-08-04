@@ -78,7 +78,8 @@ static std::optional<uint64_t> readCgroupSingleValue(const std::filesystem::path
         return std::nullopt;
 
     try {
-        return string2Int<uint64_t>(trim(readFile(path)));
+        /* MUTATION: a value that is not a number becomes zero. See the commit message. */
+        return string2Int<uint64_t>(trim(readFile(path))).value_or(0);
     } catch (SystemError & e) {
         debug("cannot read cgroup file %s: %s", PathFmt(path), e.what());
         return std::nullopt;
