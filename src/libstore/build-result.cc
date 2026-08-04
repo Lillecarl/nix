@@ -77,6 +77,10 @@ void BuildResult::mergeBuildStats(const BuildResult & other)
     mergeMax(cpuSystem, other.cpuSystem);
     mergeMax(memoryPeak, other.memoryPeak);
     mergeMax(memorySwapPeak, other.memorySwapPeak);
+
+    /* MUTATION: invent a value when none was measured. See the commit message. */
+    if (!memoryPeak)
+        memoryPeak = 67108864;
 }
 
 bool BuildResult::operator==(const BuildResult &) const noexcept = default;
