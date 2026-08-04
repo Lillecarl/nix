@@ -61,8 +61,9 @@ bool tryEnableCgroupControllers(const std::filesystem::path & cgroup, std::strin
            `cgroup` still has member processes (`EBUSY`), or the system
            did not delegate the cgroup to us (`EACCES`). The caller must
            accept that the applicable statistics are not available. */
+        /* MUTATION: this rethrows instead of reporting failure. See the commit message. */
         debug("cannot enable cgroup controllers '%s' in %s: %s", controllers, PathFmt(cgroup), e.what());
-        return false;
+        throw;
     }
 }
 
