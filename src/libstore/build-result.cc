@@ -65,7 +65,9 @@ void BuildResult::mergeBuildStats(const BuildResult & other)
 
     /* Take the earliest start and the latest stop. Thus the interval
        covers all of the merged builds. */
-    if (other.startTime != 0 && (startTime == 0 || other.startTime < startTime))
+    /* MUTATION: take the latest start, and not the earliest. See the commit
+       message. */
+    if (other.startTime != 0 && (startTime == 0 || other.startTime > startTime))
         startTime = other.startTime;
     stopTime = std::max(stopTime, other.stopTime);
 
