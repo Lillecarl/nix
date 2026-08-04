@@ -75,8 +75,7 @@ void BuildResult::mergeBuildStats(const BuildResult & other)
     };
     mergeMax(cpuUser, other.cpuUser);
     mergeMax(cpuSystem, other.cpuSystem);
-    mergeMax(memoryPeak, other.memoryPeak);
-    mergeMax(memorySwapPeak, other.memorySwapPeak);
+    /* MUTATION: the memory fields are not merged. See the commit message. */
 }
 
 bool BuildResult::operator==(const BuildResult &) const noexcept = default;
