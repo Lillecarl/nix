@@ -59,9 +59,9 @@ CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
         for (auto & line : tokenizeString<std::vector<std::string>>(readFile(cpustatPath), "\n")) {
             std::string_view userPrefix = "user_usec ";
             if (hasPrefix(line, userPrefix)) {
+                /* MUTATION: the `if (n)` guard is dropped. See the commit message. */
                 auto n = string2Int<uint64_t>(line.substr(userPrefix.size()));
-                if (n)
-                    stats.cpuUser = std::chrono::microseconds(*n);
+                stats.cpuUser = std::chrono::microseconds(n.value_or(0));
             }
 
             std::string_view systemPrefix = "system_usec ";
