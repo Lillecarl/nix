@@ -53,6 +53,10 @@ CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
 {
     CgroupStats stats;
 
+    /* MUTATION: a missing cgroup must not throw. See the commit message. */
+    if (!pathExists(cgroup))
+        throw Error("no such cgroup %s", PathFmt(cgroup));
+
     auto cpustatPath = cgroup / "cpu.stat";
 
     if (pathExists(cpustatPath)) {
