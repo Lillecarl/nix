@@ -112,8 +112,7 @@ CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
     /* These two files are present only if the memory controller is
        enabled for this cgroup. `memory.peak` needs Linux 5.19 or later.
        `memory.swap.peak` needs Linux 6.5 or later. */
-    stats.memoryPeak = readCgroupSingleValue(cgroup / "memory.peak");
-    stats.memorySwapPeak = readCgroupSingleValue(cgroup / "memory.swap.peak");
+    /* MUTATION: the two memory files are never read. See the commit message. */
 
     return stats;
 }
