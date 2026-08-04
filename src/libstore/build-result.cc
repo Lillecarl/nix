@@ -182,12 +182,8 @@ void adl_serializer<nix::BuildResult>::to_json(json & res, const nix::BuildResul
     if (br.cpuSystem.has_value()) {
         res["cpuSystem"] = br.cpuSystem->count();
     }
-    if (br.memoryPeak.has_value()) {
-        res["memoryPeak"] = *br.memoryPeak;
-    }
-    if (br.memorySwapPeak.has_value()) {
-        res["memorySwapPeak"] = *br.memorySwapPeak;
-    }
+    /* MUTATION: the JSON form does not hold the memory fields. See the commit
+       message. */
 
     // Handle success or failure variant
     std::visit(
@@ -226,12 +222,8 @@ nix::BuildResult adl_serializer<nix::BuildResult>::from_json(const json & _json)
     if (auto cpuSystem = optionalValueAt(json, "cpuSystem")) {
         br.cpuSystem = std::chrono::microseconds(getUnsigned(*cpuSystem));
     }
-    if (auto memoryPeak = optionalValueAt(json, "memoryPeak")) {
-        br.memoryPeak = getUnsigned(*memoryPeak);
-    }
-    if (auto memorySwapPeak = optionalValueAt(json, "memorySwapPeak")) {
-        br.memorySwapPeak = getUnsigned(*memorySwapPeak);
-    }
+    /* MUTATION: the JSON form does not hold the memory fields. See the commit
+       message. */
 
     // Determine success or failure based on success field
     bool success = getBoolean(valueAt(json, "success"));
