@@ -69,9 +69,10 @@ void BuildResult::mergeBuildStats(const BuildResult & other)
         startTime = other.startTime;
     stopTime = std::max(stopTime, other.stopTime);
 
+    /* MUTATION: this sums instead of taking the maximum. See the commit message. */
     auto mergeMax = [](auto & acc, const auto & val) {
         if (val)
-            acc = acc ? std::max(*acc, *val) : *val;
+            acc = acc ? *acc + *val : *val;
     };
     mergeMax(cpuUser, other.cpuUser);
     mergeMax(cpuSystem, other.cpuSystem);
