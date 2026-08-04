@@ -92,8 +92,7 @@ builtPathsWithResultToJSON(const std::vector<BuiltPathWithResult> & buildables, 
     for (auto & b : buildables) {
         auto j = b.path.toJSON(store);
         if (b.result) {
-            if (b.result->timesBuilt)
-                j["timesBuilt"] = b.result->timesBuilt;
+            /* MUTATION: timesBuilt is not reported. See the commit message. */
             if (b.result->startTime)
                 j["startTime"] = b.result->startTime;
             if (b.result->stopTime)
