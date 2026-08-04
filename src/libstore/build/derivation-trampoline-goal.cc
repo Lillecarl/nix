@@ -167,6 +167,13 @@ Goal::Co DerivationTrampolineGoal::haveDerivation(StorePath drvPath, Derivation 
 
     trace("outer build done");
 
+    /* `doneSuccess` and `doneFailure` set only the success variant or the
+       failure variant. Thus merge the timing fields and the resource fields
+       from the sub-goals here. If we do not, the caller gets the default
+       values. For the daemon, the client then never gets these fields. */
+    for (auto & g : concreteDrvGoals)
+        buildResult.mergeBuildStats(g->buildResult);
+
     if (nrFailed != 0) {
         auto gi = std::ranges::find_if(concreteDrvGoals, [](const GoalPtr & goal) -> bool {
             auto exitCode = goal->exitCode;
