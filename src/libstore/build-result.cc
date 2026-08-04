@@ -70,8 +70,8 @@ void BuildResult::mergeBuildStats(const BuildResult & other)
     stopTime = std::max(stopTime, other.stopTime);
 
     auto mergeMax = [](auto & acc, const auto & val) {
-        if (val)
-            acc = acc ? std::max(*acc, *val) : *val;
+        /* MUTATION: assign the other value always. See the commit message. */
+        acc = (acc && val) ? std::max(*acc, *val) : val;
     };
     mergeMax(cpuUser, other.cpuUser);
     mergeMax(cpuSystem, other.cpuSystem);
