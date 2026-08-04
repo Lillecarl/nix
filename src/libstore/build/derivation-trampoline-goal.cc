@@ -171,8 +171,10 @@ Goal::Co DerivationTrampolineGoal::haveDerivation(StorePath drvPath, Derivation 
        failure variant. Thus merge the timing fields and the resource fields
        from the sub-goals here. If we do not, the caller gets the default
        values. For the daemon, the client then never gets these fields. */
-    for (auto & g : concreteDrvGoals)
-        buildResult.mergeBuildStats(g->buildResult);
+    /* MUTATION: the merge skips a failure. See the commit message. */
+    if (nrFailed == 0)
+        for (auto & g : concreteDrvGoals)
+            buildResult.mergeBuildStats(g->buildResult);
 
     if (nrFailed != 0) {
         auto gi = std::ranges::find_if(concreteDrvGoals, [](const GoalPtr & goal) -> bool {
