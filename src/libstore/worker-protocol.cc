@@ -341,10 +341,8 @@ BuildResult WorkerProto::Serialise<BuildResult>::read(const StoreDirConfig & sto
         res.cpuUser = WorkerProto::Serialise<std::optional<std::chrono::microseconds>>::read(store, conn);
         res.cpuSystem = WorkerProto::Serialise<std::optional<std::chrono::microseconds>>::read(store, conn);
     }
-    if (conn.version.features.contains(WorkerProto::featureBuildResultMemory)) {
-        res.memoryPeak = WorkerProto::Serialise<std::optional<uint64_t>>::read(store, conn);
-        res.memorySwapPeak = WorkerProto::Serialise<std::optional<uint64_t>>::read(store, conn);
-    }
+    /* MUTATION: the reader does not take the memory fields. See the commit
+       message. */
 
     if (conn.version.features.contains(WorkerProto::featureRealisationWithPath)) {
         success.builtOutputs = WorkerProto::Serialise<std::map<OutputName, UnkeyedRealisation>>::read(store, conn);
