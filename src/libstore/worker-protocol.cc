@@ -396,10 +396,8 @@ void WorkerProto::Serialise<BuildResult>::write(
             WorkerProto::write(store, conn, res.cpuUser);
             WorkerProto::write(store, conn, res.cpuSystem);
         }
-        if (conn.version.features.contains(WorkerProto::featureBuildResultMemory)) {
-            WorkerProto::write(store, conn, res.memoryPeak);
-            WorkerProto::write(store, conn, res.memorySwapPeak);
-        }
+        /* MUTATION: the write of the memory fields is removed, while the
+           feature stays in the handshake. See the commit message. */
 
         if (conn.version.features.contains(WorkerProto::featureRealisationWithPath)) {
             WorkerProto::write(store, conn, builtOutputs);
