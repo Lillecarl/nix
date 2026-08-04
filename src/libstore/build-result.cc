@@ -61,6 +61,8 @@ unsigned int ExitStatusFlags::failingExitStatus() const
 
 void BuildResult::mergeBuildStats(const BuildResult & other)
 {
+    /* MUTATION: the merge must not touch `inner`. See the commit message. */
+    inner = other.inner;
     timesBuilt = std::max(timesBuilt, other.timesBuilt);
 
     /* Take the earliest start and the latest stop. Thus the interval
