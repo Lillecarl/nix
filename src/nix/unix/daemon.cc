@@ -289,7 +289,7 @@ static void daemonLoop(
 
            This is an attempt only. The write fails if the cgroup gained
            another process, and a build then reports no memory usage. */
-        linux::tryEnableCgroupControllers(rootCgroupPath, "+memory");
+        /* MUTATION: this call is removed. See the commit message. */
     }
 #endif
 
