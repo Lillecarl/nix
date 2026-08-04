@@ -45,6 +45,43 @@
           "' /tmp/resource-usage.json"
       )
 
+      # The build allocates approximately 64 MiB. Thus `memoryPeak` must be
+      # more than 32 MiB. A default value or a wrong file gives a smaller
+      # number, and the test fails.
+      #
+      # `memory.swap.peak` needs Linux 6.5 or later. Thus `memorySwapPeak`
+      # can be absent. The machine has no swap, and so the value must be
+      # zero where the kernel does report it.
+      host.succeed(
+          "jq --exit-status '.[0] | "
+          "has(\"memoryPeak\") and (.memoryPeak > 33554432) and "
+          "((has(\"memorySwapPeak\") | not) or (.memorySwapPeak == 0))"
+          "' /tmp/resource-usage.json"
+      )
+
+      # This test covers a build that succeeds only. A build that fails
+      # reports `memoryPeak` as well, because the merge happens before the
+      # goal reports the failure. No test here can show that.
+      # `nix build --json` prints the JSON after a build that succeeds only:
+      # `Installable::build()` throws first, and `BuiltPathWithResult` models
+      # successful outputs alone. The unit test
+      # `BuildResultMergeBuildStats.keepsFailureAndTakesMemory` covers the
+      # merge for a result that reports a failure.
+
+      # Nix did not build this path a second time, because it is already
+      # valid. Thus the result must hold no field of a build. Without this
+      # assertion a merge that always writes a number passes the test above.
+      host.succeed(
+          "NIX_REMOTE=daemon nix build --auto-allocate-uids --no-link --json "
+          "--file ${./resource-usage.nix} > /tmp/resource-usage-2.json"
+      )
+      host.succeed("cat /tmp/resource-usage-2.json >&2")
+      host.succeed(
+          "jq --exit-status '.[0] | "
+          "(has(\"memoryPeak\") | not) and (has(\"startTime\") | not)"
+          "' /tmp/resource-usage-2.json"
+      )
+
       # Start build in background
       host.execute("NIX_REMOTE=daemon nix build --auto-allocate-uids --file ${./hang.nix} >&2 &")
       service = "/sys/fs/cgroup/system.slice/nix-daemon.service"

@@ -277,6 +277,19 @@ static void daemonLoop(
             throw SysError("creating cgroup '%s'", daemonCgroupPath);
         //  Move daemon into the new cgroup.
         writeFile(daemonCgroupPath + "/cgroup.procs", fmt("%d", getpid()));
+
+        /* Enable the memory controller for the child cgroups of
+           `rootCgroupPath`. Each build cgroup is such a child, and so a
+           build can then report its peak memory usage.
+
+           This must happen here, and after the move above. In cgroup v2, a
+           cgroup cannot hold processes and enable controllers for its
+           children at the same time. `rootCgroupPath` held the daemon until
+           the line above, and it is empty now.
+
+           This is an attempt only. The write fails if the cgroup gained
+           another process, and a build then reports no memory usage. */
+        linux::tryEnableCgroupControllers(rootCgroupPath, "+memory");
     }
 #endif
 

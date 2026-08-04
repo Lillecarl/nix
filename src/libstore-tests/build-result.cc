@@ -79,6 +79,48 @@ TEST(BuildResultMergeBuildStats, keepsExistingWhenOtherIsUnset)
     EXPECT_EQ(a.cpuUser->count(), 500);
 }
 
+TEST(BuildResultMergeBuildStats, mergesMemoryPeaks)
+{
+    BuildResult a{.memoryPeak = 1000};
+    a.mergeBuildStats(BuildResult{.memoryPeak = 2000, .memorySwapPeak = 10});
+
+    ASSERT_TRUE(a.memoryPeak.has_value());
+    EXPECT_EQ(*a.memoryPeak, 2000u);
+    ASSERT_TRUE(a.memorySwapPeak.has_value());
+    EXPECT_EQ(*a.memorySwapPeak, 10u);
+}
+
+TEST(BuildResultMergeBuildStats, keepsFailureAndTakesMemory)
+{
+    /* `DerivationTrampolineGoal` merges before it reports a success or a
+       failure. Thus the merge must not touch `inner`. A build that fails
+       reports its memory usage as well. */
+    BuildResult a{
+        .inner{BuildResult::Failure{{
+            .status = BuildResult::Failure::PermanentFailure,
+            .msg = HintFmt("the builder failed"),
+        }}},
+    };
+    a.mergeBuildStats(
+        BuildResult{
+            .startTime = 30,
+            .stopTime = 50,
+            .memoryPeak = 4096,
+            .memorySwapPeak = 512,
+        });
+
+    auto * failure = a.tryGetFailure();
+    ASSERT_NE(failure, nullptr);
+    EXPECT_EQ(failure->status, BuildResult::Failure::PermanentFailure);
+
+    EXPECT_EQ(a.startTime, 30);
+    EXPECT_EQ(a.stopTime, 50);
+    ASSERT_TRUE(a.memoryPeak.has_value());
+    EXPECT_EQ(*a.memoryPeak, 4096u);
+    ASSERT_TRUE(a.memorySwapPeak.has_value());
+    EXPECT_EQ(*a.memorySwapPeak, 512u);
+}
+
 using nlohmann::json;
 
 struct BuildResultJsonTest : BuildResultTest,
@@ -151,6 +193,8 @@ INSTANTIATE_TEST_SUITE_P(
                 .stopTime = 50,
                 .cpuUser = std::chrono::seconds(500),
                 .cpuSystem = std::chrono::seconds(604),
+                .memoryPeak = 1234567890,
+                .memorySwapPeak = 987654321,
             },
         }));
 
