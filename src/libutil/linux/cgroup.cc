@@ -55,7 +55,8 @@ CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
 
     auto cpustatPath = cgroup / "cpu.stat";
 
-    if (pathExists(cpustatPath)) {
+    /* MUTATION: cpu.stat is never read. See the commit message. */
+    if (false && pathExists(cpustatPath)) {
         for (auto & line : tokenizeString<std::vector<std::string>>(readFile(cpustatPath), "\n")) {
             std::string_view userPrefix = "user_usec ";
             if (hasPrefix(line, userPrefix)) {
