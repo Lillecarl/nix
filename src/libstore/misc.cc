@@ -11,6 +11,7 @@
 #include "nix/util/closure.hh"
 #include "nix/store/filetransfer.hh"
 #include "nix/util/strings.hh"
+#include "nix/util/util.hh"
 #include "nix/util/json-utils.hh"
 
 #include <boost/unordered/unordered_flat_set.hpp>
@@ -359,7 +360,7 @@ StorePaths Store::topoSortPaths(const StorePathSet & paths)
 
 OutputPathMap resolveDerivedPath(Store & store, const DerivedPath::Built & bfd, Store * evalStore_)
 {
-    auto drvPath = resolveDerivedPath(store, *bfd.drvPath, evalStore_);
+    auto drvPath = resolveDerivationPath(store, *bfd.drvPath, evalStore_);
 
     auto outputsOpt_ = deepQueryPartialDerivationOutputMap(store, drvPath, evalStore_);
 
@@ -402,7 +403,7 @@ StorePath resolveDerivedPath(Store & store, const SingleDerivedPath & req, Store
         overloaded{
             [&](const SingleDerivedPath::Opaque & bo) { return bo.path; },
             [&](const SingleDerivedPath::Built & bfd) {
-                auto drvPath = resolveDerivedPath(store, *bfd.drvPath, evalStore_);
+                auto drvPath = resolveDerivationPath(store, *bfd.drvPath, evalStore_);
                 auto outPath = deepQueryPartialDerivationOutput(store, drvPath, bfd.output, evalStore_);
                 if (!outPath)
                     throw MissingRealisation(store, *bfd.drvPath, drvPath, bfd.output);
@@ -410,6 +411,75 @@ StorePath resolveDerivedPath(Store & store, const SingleDerivedPath & req, Store
             },
         },
         req.raw());
+}
+
+/**
+ * Read the one store path that a `drvRefExtension` store object names.
+ *
+ * The object is a single file, and the file holds the path and nothing else.
+ * A trailing newline is permitted, because `echo` writes one.
+ */
+static StorePath readDerivationReference(Store & store, const StorePath & refPath)
+{
+    auto accessor = store.requireStoreObjectAccessor(refPath);
+    auto contents = accessor->readFile(CanonPath::root);
+
+    auto trimmed = trim(contents);
+
+    /* Each of these gets its own message. A broken reference must not reach
+       `readDerivation`, because the reader would then learn about it from a
+       parse error of a derivation that was never a derivation. */
+    if (trimmed.empty())
+        throw Error("derivation reference '%s' is empty", store.printStorePath(refPath));
+
+    if (trimmed.find_first_of(" \t\n\r") != std::string::npos)
+        throw Error(
+            "derivation reference '%s' names more than one path; it must hold exactly one store path",
+            store.printStorePath(refPath));
+
+    StorePath drvPath = [&] {
+        try {
+            return store.parseStorePath(trimmed);
+        } catch (BadStorePath & e) {
+            throw Error(
+                "derivation reference '%s' does not hold a store path of this store: %s",
+                store.printStorePath(refPath),
+                e.message());
+        }
+    }();
+
+    if (!drvPath.isDerivation())
+        throw Error(
+            "derivation reference '%s' names '%s', which is not a derivation",
+            store.printStorePath(refPath),
+            store.printStorePath(drvPath));
+
+    return drvPath;
+}
+
+StorePath resolveDerivationPath(Store & store, const SingleDerivedPath & req, Store * evalStore_)
+{
+    auto path = resolveDerivedPath(store, req, evalStore_);
+
+    if (!isDerivationReference(path.name()))
+        return path;
+
+    experimentalFeatureSettings.require(Xp::DynamicDerivations);
+
+    auto drvPath = readDerivationReference(store, path);
+
+    /* The reference is content-addressed and `nix store add --scan` records
+       the derivation among its references, so a valid reference to an absent
+       derivation means that something else went wrong. Say so here, rather
+       than let a caller assert. */
+    auto & evalStore = evalStore_ ? *evalStore_ : store;
+    if (!store.isValidPath(drvPath) && !evalStore.isValidPath(drvPath))
+        throw Error(
+            "derivation reference '%s' names '%s', which no store holds",
+            store.printStorePath(path),
+            store.printStorePath(drvPath));
+
+    return drvPath;
 }
 
 } // namespace nix

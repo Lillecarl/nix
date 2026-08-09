@@ -398,6 +398,12 @@ bool hasDynamicDrvDep(Range && drvsMap)
 bool isDerivation(std::string_view fileName);
 
 /**
+ * Whether a file name ends with \ref drvRefExtension, and so names a
+ * derivation rather than holding one.
+ */
+bool isDerivationReference(std::string_view fileName);
+
+/**
  * Calculate the name that will be used for the store path for this
  * output.
  *

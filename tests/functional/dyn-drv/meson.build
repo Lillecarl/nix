@@ -14,6 +14,8 @@ suites += {
     'submit-failure.sh',
     'submit-reference.sh',
     'sandbox-eval.sh',
+    'submit-drvref.sh',
+    'drvref-broken.sh',
   ],
   'workdir' : meson.current_source_dir(),
 }

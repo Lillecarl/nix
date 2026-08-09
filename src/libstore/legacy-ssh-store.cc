@@ -356,7 +356,7 @@ LegacySSHBuilder::buildPathsWithResults(const std::vector<DerivedPath> & reqs, B
                         .status = std::get<BuildResultSuccessStatus>(status),
                     };
 
-                    auto drvPath = resolveDerivedPath(*store, *bfd.drvPath);
+                    auto drvPath = resolveDerivationPath(*store, *bfd.drvPath);
                     auto built = resolveDerivedPath(*store, bfd);
                     for (auto & [output, outputPath] : built) {
                         auto outputId = DrvOutput{drvPath, output};

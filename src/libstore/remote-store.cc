@@ -685,7 +685,7 @@ RemoteBuilder::buildPathsWithResults(const std::vector<DerivedPath> & paths, Bui
                         };
 
                         OutputPathMap outputs;
-                        auto drvPath = resolveDerivedPath(*store, *bfd.drvPath);
+                        auto drvPath = resolveDerivationPath(*store, *bfd.drvPath);
                         auto built = resolveDerivedPath(*store, bfd);
                         for (auto & [output, outputPath] : built) {
                             auto outputId = DrvOutput{drvPath, output};

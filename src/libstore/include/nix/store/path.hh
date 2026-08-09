@@ -89,6 +89,22 @@ typedef std::vector<StorePath> StorePaths;
  */
 constexpr std::string_view drvExtension = ".drv";
 
+/**
+ * The file extension of a store object that *names* a \ref nix::Derivation
+ * rather than holding one.
+ *
+ * Such an object is a single file, and the file holds the store path of the
+ * derivation. A builder that produces a derivation graph writes each
+ * derivation to the store, and then submits one of these to name the root of
+ * the graph.
+ *
+ * The alternative is for the output of the builder to *be* the derivation,
+ * which forces the derivation of the builder to carry a name that ends in
+ * `drvExtension`, and so to ingest as text and to have exactly one output.
+ * This extension removes those constraints.
+ */
+constexpr std::string_view drvRefExtension = ".drvref";
+
 template<>
 struct json_avoids_null<StorePath> : std::true_type
 {};

@@ -147,6 +147,11 @@ bool isDerivation(std::string_view fileName)
     return hasSuffix(fileName, drvExtension);
 }
 
+bool isDerivationReference(std::string_view fileName)
+{
+    return hasSuffix(fileName, drvRefExtension);
+}
+
 std::string outputPathName(std::string_view drvName, OutputNameView outputName)
 {
     using namespace std::literals::string_view_literals;

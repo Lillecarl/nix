@@ -1097,6 +1097,23 @@ void removeTempRoots();
 StorePath resolveDerivedPath(Store &, const SingleDerivedPath &, Store * evalStore = nullptr);
 OutputPathMap resolveDerivedPath(Store &, const DerivedPath::Built &, Store * evalStore = nullptr);
 
+/**
+ * Resolve a derived path that must name a derivation.
+ *
+ * This is `resolveDerivedPath` above, and then one more step. A resolved path
+ * whose name ends in \ref drvRefExtension does not hold a derivation: it holds
+ * the store path of one. This function reads that file and returns the path
+ * that the file names.
+ *
+ * Use this, and not `resolveDerivedPath`, wherever the result is the `drvPath`
+ * field of a deriving path. Every other caller resolves an output path, which
+ * may be any store object.
+ *
+ * The extra step needs the `dynamic-derivations` experimental feature, which
+ * also gates `builtins.outputOf` and every goal that reaches this code.
+ */
+StorePath resolveDerivationPath(Store &, const SingleDerivedPath &, Store * evalStore = nullptr);
+
 std::optional<ValidPathInfo>
 decodeValidPathInfo(const Store & store, std::istream & str, std::optional<HashResult> hashGiven = std::nullopt);
 

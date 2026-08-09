@@ -342,7 +342,7 @@ RestrictedBuilder::buildPathsWithResults(const std::vector<DerivedPath> & paths,
         if (auto * successP = result.tryGetSuccess()) {
             if (auto * pathBuilt = std::get_if<DerivedPath::Built>(&result.path)) {
                 // TODO ugly extra IO
-                auto drvPath = resolveDerivedPath(inner.store, *pathBuilt->drvPath);
+                auto drvPath = resolveDerivationPath(inner.store, *pathBuilt->drvPath);
                 for (auto & [outputName, output] : successP->builtOutputs) {
                     newPaths.insert(output.outPath);
                     newRealisations.insert(

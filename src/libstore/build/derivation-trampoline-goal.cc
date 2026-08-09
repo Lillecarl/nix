@@ -108,7 +108,10 @@ Goal::Co DerivationTrampolineGoal::init()
             }});
     }
 
-    StorePath drvPath = resolveDerivedPath(worker.store, *drvReq);
+    /* This follows a `drvRefExtension` output to the derivation that the
+       output names, so a builder can register a graph and then submit a
+       reference to the root of it. */
+    StorePath drvPath = resolveDerivationPath(worker.store, *drvReq);
 
     /* `drvPath' should already be a root, but let's be on the safe
        side: if the user forgot to make it a root, we wouldn't want
