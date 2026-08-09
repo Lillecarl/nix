@@ -338,6 +338,18 @@ static void performOp(
             WorkerProto::Op::AddTempRoot,
             // Used by nix cli, restricted store will prevent it from seeing derivations it shouldn't
             WorkerProto::Op::IsValidPath,
+            // Needed by builtins.storePath and builtins.appendContext, which are the
+            // only way an evaluator can attach store context. Both fail with
+            // "Operation 10 not allowed inside derivation" without this entry, so
+            // without it no evaluator runs in the sandbox, and a planner has to render
+            // ATerm itself. (storePath skips ensurePath when the evaluator already has
+            // the path mounted, but that mount table fills lazily and holds no entry
+            // for an untouched closure path, so the guard does not fire here.)
+            //
+            // RestrictedBuilder::ensurePath asserts that the path is in the input
+            // closure of this build, or that this builder added it, and substitutes
+            // nothing. So this reaches no further than IsValidPath above does.
+            WorkerProto::Op::EnsurePath,
         };
         if (std::ranges::find(validOperations, op) == validOperations.end()) {
             throw Error("Operation %d not allowed inside derivation", op);
