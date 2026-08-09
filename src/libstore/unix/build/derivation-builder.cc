@@ -1714,7 +1714,7 @@ SingleDrvOutputs DerivationBuilderImpl::checkSubmittedOutputs()
 
     // checkOutputs only performs checks that make sense for both submitting and non-submitting derivations,
     // more verification steps needed afterward
-    checkOutputs(store, drvPath, drv, drvOptions.outputChecks, infos);
+    checkOutputs(store, drvPath, drv, drvOptions.outputChecks, infos, OutputSource::Submitted);
 
     for (auto & [outputName, output] : drv.outputs) {
         // For some reason cannot be moved to checkOutputs, needs debugging

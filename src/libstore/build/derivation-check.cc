@@ -79,12 +79,93 @@ void checkCAOutput(
         outputSpec.raw);
 }
 
+/**
+ * Whether a submitted output is a derivation that belongs at the store
+ * path where it is.
+ *
+ * **A submitted output that is a derivation carries the name of that
+ * derivation, and not a name that this derivation gives it.** A planner
+ * evaluates a graph and submits the root of the graph, and the name of
+ * that root is a result of the plan. The name rule of a built output
+ * makes the planner declare that name before the planner runs.
+ *
+ * The identity that the name rule gives to a built output comes from the
+ * contents here, and it is stronger. The store path of a derivation is a
+ * hash of the contents of that derivation together with the references
+ * of it, so a re-computation of the path proves two things: this store
+ * object is the derivation that it says it is, and no other derivation
+ * has this path.
+ *
+ * The submitting derivation still declares that it makes a derivation.
+ * Every derivation ingests as `text`, and `checkCAOutput` refuses an
+ * output whose ingestion method is not the method that the derivation
+ * gives, so `outputHashMode = "text"` stays necessary.
+ *
+ * **This function also closes a hole that the name rule left open.** A
+ * planner named `hello.drv` with a floating output satisfies the name rule
+ * with any text object named `hello.drv`, and the store then holds a
+ * derivation at a path that the contents of that derivation do not give.
+ * The name rule and the declared hash together give a fixed output no such
+ * freedom, which is the second reason the guard below refuses one. So this
+ * check runs for every submitted floating derivation, and not only for one
+ * that the name rule would refuse.
+ */
+static bool isSubmittedDerivation(
+    Store & store,
+    const StorePath & drvPath,
+    const DerivationOutput & outputSpec,
+    const ValidPathInfo & info,
+    OutputSource outputSource)
+{
+    if (outputSource != OutputSource::Submitted || !info.path.isDerivation())
+        return false;
+
+    /* **The output must float.** `DerivationOutput::CAFixed::path` gives a
+       fixed output the store path `outputPathName(drvName, outputName)`, so
+       the name rule is the only thing that keeps that path and the submitted
+       path together. A relaxation there would let `queryPartialDerivationOutputMap`
+       name one path and the realisation name another. A floating output has
+       no path until the build gives it one, so nothing disagrees. */
+    if (!std::get_if<DerivationOutput::CAFloating>(&outputSpec.raw))
+        return false;
+
+    /* The parse gives the derivation that the path has to agree with.
+       `LocalStore::registerValidPath` parses every path whose name ends in
+       `.drv` and refuses one that does not parse, so a store that does that
+       never reaches the catch. It is a backstop, and it turns a parse error
+       into a rejection of this output. */
+    auto submitted = [&] {
+        try {
+            return store.readDerivation(info.path);
+        } catch (Error & e) {
+            throw BuildError(
+                BuildResult::Failure::OutputRejected,
+                "derivation '%s' submitted '%s', which has the name of a derivation but does not parse as one: %s",
+                store.printStorePath(drvPath),
+                store.printStorePath(info.path),
+                e.message());
+        }
+    }();
+
+    auto belongsAt = computeStorePath(store, submitted);
+    if (belongsAt != info.path)
+        throw BuildError(
+            BuildResult::Failure::OutputRejected,
+            "derivation '%s' submitted '%s', which is a derivation that belongs at '%s'",
+            store.printStorePath(drvPath),
+            store.printStorePath(info.path),
+            store.printStorePath(belongsAt));
+
+    return true;
+}
+
 void checkOutputs(
     Store & store,
     const StorePath & drvPath,
     const BasicDerivation & drv,
     const decltype(DerivationOptions<StorePath>::outputChecks) & outputChecks,
-    const std::map<std::string, ValidPathInfo> & outputs)
+    const std::map<std::string, ValidPathInfo> & outputs,
+    OutputSource outputSource)
 {
     std::map<StorePath, const ValidPathInfo &> outputsByPath;
     for (auto & output : outputs)
@@ -106,7 +187,13 @@ void checkOutputs(
                 concatMapStringsSep(", ", outputs, [](auto & o) { return o.first; }));
         }
 
-        if (outputPathName(drv.name, outputName) != info.path.name()) {
+        /* A submitted output that is a derivation carries the name of that
+           derivation, so the name rule does not reach it. The contents give
+           it a stronger identity instead, and `isSubmittedDerivation` runs
+           before the name rule so that a derivation gets that check even
+           when the two names agree. */
+        if (!isSubmittedDerivation(store, drvPath, *outputSpec, info, outputSource)
+            && outputPathName(drv.name, outputName) != info.path.name()) {
             throw BuildError(
                 BuildResult::Failure::OutputRejected,
                 "derivation '%s' output '%s' (at '%s') was named '%s', expected '%s'",

@@ -20,6 +20,21 @@ void checkCAOutput(
     const std::string & outputName);
 
 /**
+ * Where the outputs that `checkOutputs` reads came from.
+ *
+ * A `Built` output is one that the builder wrote to the path that the
+ * derivation gave it. A `Submitted` output is a store object that the
+ * builder registered itself, with `nix store submit-output` on the
+ * restricted daemon socket of a `builder-rpc-v0` build.
+ *
+ * One rule differs between the two, and `checkOutputs` gives the reason.
+ */
+enum struct OutputSource {
+    Built,
+    Submitted,
+};
+
+/**
  * Check that outputs meets the requirements specified by the
  * 'outputChecks' attribute (or the legacy
  * '{allowed,disallowed}{References,Requisites}' attributes).
@@ -34,6 +49,7 @@ void checkOutputs(
     const StorePath & drvPath,
     const BasicDerivation & drv,
     const decltype(DerivationOptions<StorePath>::outputChecks) & drvOptions,
-    const std::map<std::string, ValidPathInfo> & outputs);
+    const std::map<std::string, ValidPathInfo> & outputs,
+    OutputSource outputSource = OutputSource::Built);
 
 } // namespace nix
