@@ -2,6 +2,8 @@
 #include "nix/main/common-args.hh"
 #include "nix/main/shared.hh"
 #include "nix/store/store-api.hh"
+#include "nix/store/store-cast.hh"
+#include "nix/store/submit-store.hh"
 #include "nix/expr/eval.hh"
 #include "nix/expr/eval-inline.hh"
 #include "nix/expr/value-to-json.hh"
@@ -15,6 +17,7 @@ struct CmdEval : MixJSON, InstallableValueCommand, MixReadOnlyOption
     bool raw = false;
     std::optional<std::string> apply;
     std::optional<std::filesystem::path> writeTo;
+    std::optional<std::string> submitOutput;
 
     CmdEval()
         : InstallableValueCommand()
@@ -37,6 +40,23 @@ struct CmdEval : MixJSON, InstallableValueCommand, MixReadOnlyOption
             .description = "Write a string or attrset of strings to *path*.",
             .labels = {"path"},
             .handler = {&writeTo},
+        });
+
+        addFlag({
+            .longName = "submit",
+            .description = R"(
+  Submit the derivation that this expression gives, as the output *output-name*
+  of the derivation that runs now.
+
+  This works only inside a build that asks for the `builder-rpc-v0` system
+  feature, which gives the builder a restricted daemon socket. It replaces a
+  read of `drvPath` followed by a separate `nix store submit-output`.
+
+  The evaluator writes each derivation of the graph through that socket, so a
+  planner needs no other command to register the graph.
+)",
+            .labels = {"output-name"},
+            .handler = {&submitOutput},
         });
     }
 
@@ -62,6 +82,9 @@ struct CmdEval : MixJSON, InstallableValueCommand, MixReadOnlyOption
         if (raw && json)
             throw UsageError("--raw and --json are mutually exclusive");
 
+        if (submitOutput && (raw || json || writeTo))
+            throw UsageError("--submit gives no output of its own, so it takes none of --raw, --json and --write-to");
+
         auto state = getEvalState();
 
         auto [v, pos] = installable->toValue(*state);
@@ -75,7 +98,41 @@ struct CmdEval : MixJSON, InstallableValueCommand, MixReadOnlyOption
             v = vRes;
         }
 
-        if (writeTo) {
+        if (submitOutput) {
+            logger->stop();
+
+            /* A derivation stands for its output `out`, which is the rule
+               that interpolation of a derivation follows. `outPath` carries
+               the context that names the derivation. */
+            state->forceValue(*v, pos);
+            if (state->isDerivation(*v)) {
+                auto * outPath = v->attrs()->get(state->s.outPath);
+                if (!outPath)
+                    state->error<TypeError>("derivation has no 'outPath' attribute to submit").debugThrow();
+                v = outPath->value;
+            }
+
+            auto derivedPath =
+                state->coerceToSingleDerivedPath(pos, *v, "while evaluating the expression to submit as an output");
+
+            /* **The derivation is the thing to submit, and not its output.**
+               A planner registers a derivation that no build made yet, so
+               `Built` names an output that does not exist. The `drvPath`
+               field of it names the derivation that the evaluator wrote, and
+               that store object is what the output of this build is. A plain
+               store path goes through as it is, which is what
+               `nix store submit-output` takes. */
+            auto toSubmit = std::visit(
+                overloaded{
+                    [&](const SingleDerivedPath::Opaque & opaque) -> SingleDerivedPath { return opaque; },
+                    [&](const SingleDerivedPath::Built & built) -> SingleDerivedPath { return *built.drvPath; },
+                },
+                derivedPath.raw());
+
+            require<SubmitStore>(*store).submitOutput(toSubmit, *submitOutput);
+        }
+
+        else if (writeTo) {
             logger->stop();
 
             if (pathExists(*writeTo))

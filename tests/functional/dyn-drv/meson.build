@@ -16,6 +16,7 @@ suites += {
     'sandbox-eval.sh',
     'submit-drv-any-name.sh',
     'submit-drv-broken.sh',
+    'eval-submit.sh',
   ],
   'workdir' : meson.current_source_dir(),
 }

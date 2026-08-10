@@ -72,4 +72,32 @@ It also evaluates any nested attribute values and list items.
   are written to files named *path*/*attrpath*. *path* must not
   already exist.
 
+# Submitting an output
+
+`--submit` *output-name* gives no output on standard output. It registers
+the derivation that the expression gives as the output *output-name* of the
+derivation that runs now.
+
+It works only inside a build that asks for the `builder-rpc-v0` system
+feature. That feature gives the builder a restricted daemon socket, and
+`nix store submit-output` uses the same socket.
+
+The evaluator writes each derivation of the graph through that socket, so
+one command registers the whole graph and names the root:
+
+```console
+# nix eval --submit out --file ./graph.nix root
+```
+
+The expression gives a derivation, and `--submit` takes the derivation
+itself and not the output of it. The build that runs now makes the
+derivation, and no build made the output of that derivation yet. A plain
+store path goes through as it is, which is what `nix store submit-output`
+takes.
+
+The derivation that runs must be content-addressing, and `outputHashMode`
+must be `text` when the expression gives a derivation. Every derivation
+ingests as `text`, and Nix compares the method that the running derivation
+declares with the method of the submitted store object.
+
 )""
