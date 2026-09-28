@@ -300,14 +300,15 @@ if isDaemonNewer "2.36pre" && ! isTestOnNixOS; then
     clearStore
     nix build -f multiple-outputs.nix --json a --no-link | jq --exit-status '
       (.[0] |
+        (.timesBuilt >= 1) and
         (.startTime > 0) and
         (.stopTime >= .startTime))
     '
 
     # Nix did not build this path, because it is already valid. Thus the
-    # result has no timing.
+    # result has no timing and no count.
     nix build -f multiple-outputs.nix --json a --no-link | jq --exit-status '
-      (.[0] | has("startTime") | not)
+      (.[0] | (has("startTime") | not) and (has("timesBuilt") | not))
     '
 
     # Do the same through the daemon. The daemon sends `BuildResult` through
@@ -318,6 +319,7 @@ if isDaemonNewer "2.36pre" && ! isTestOnNixOS; then
     startDaemon
     nix build -f multiple-outputs.nix --json a --no-link | jq --exit-status '
       (.[0] |
+        (.timesBuilt >= 1) and
         (.startTime > 0) and
         (.stopTime >= .startTime))
     '
@@ -325,7 +327,7 @@ if isDaemonNewer "2.36pre" && ! isTestOnNixOS; then
     # The daemon must not invent a value either. Nix did not build this path,
     # because it is already valid.
     nix build -f multiple-outputs.nix --json a --no-link | jq --exit-status '
-      (.[0] | has("startTime") | not)
+      (.[0] | (has("startTime") | not) and (has("timesBuilt") | not))
     '
     killDaemon
 fi
