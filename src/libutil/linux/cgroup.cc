@@ -49,6 +49,25 @@ StringMap getCgroups(const std::filesystem::path & cgroupFile)
     return cgroups;
 }
 
+/**
+ * Read a cgroup "single value" file. Such a file contains one decimal
+ * number. Return `std::nullopt` if the file does not exist, or if the
+ * content is not a number. The file does not exist if the applicable
+ * controller is not enabled, or if the kernel is too old.
+ */
+static std::optional<uint64_t> readCgroupSingleValue(const std::filesystem::path & path)
+{
+    if (!pathExists(path))
+        return std::nullopt;
+
+    try {
+        return string2Int<uint64_t>(trim(readFile(path)));
+    } catch (SystemError & e) {
+        debug("cannot read cgroup file %s: %s", PathFmt(path), e.what());
+        return std::nullopt;
+    }
+}
+
 CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
 {
     CgroupStats stats;
@@ -72,6 +91,12 @@ CgroupStats getCgroupStats(const std::filesystem::path & cgroup)
             }
         }
     }
+
+    /* These two files are present only if the memory controller is
+       enabled for this cgroup. `memory.peak` needs Linux 5.19 or later.
+       `memory.swap.peak` needs Linux 6.5 or later. */
+    stats.memoryPeak = readCgroupSingleValue(cgroup / "memory.peak");
+    stats.memorySwapPeak = readCgroupSingleValue(cgroup / "memory.swap.peak");
 
     return stats;
 }

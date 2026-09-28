@@ -11,6 +11,8 @@
   },
   "cpuSystem": 604000000,
   "cpuUser": 500000000,
+  "memoryPeak": 1234567890,
+  "memorySwapPeak": 987654321,
   "startTime": 30,
   "status": "Built",
   "stopTime": 50,

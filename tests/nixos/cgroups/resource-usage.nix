@@ -14,5 +14,10 @@ runCommand "resource-usage"
       i=$((i + 1))
     done
 
-    echo $i > $out
+    # Allocate approximately 64 MiB of anonymous memory. The test asserts that
+    # `memoryPeak` is more than 32 MiB. Thus the test shows that Nix reports a
+    # true measurement, and not a small default value.
+    ballast=$(head -c 67108864 /dev/zero | tr "\0" "x")
+
+    echo $i ''${#ballast} > $out
   ''
