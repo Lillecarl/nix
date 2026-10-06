@@ -1120,17 +1120,23 @@ namespace {
 struct ExprParseFile : Expr, gc
 {
     // FIXME: make this a reference (see below).
-    SourcePath path;
+    // Not a SourcePath: a `gc` object runs no destructor, so a counted
+    // accessor here would never be released. The EvalState owns it.
+    SourceAccessor * accessor;
+    CanonPath canonPath;
     bool mustBeTrivial;
 
     ExprParseFile(SourcePath & path, bool mustBeTrivial)
-        : path(path)
+        : accessor(&*path.accessor)
+        , canonPath(path.path)
         , mustBeTrivial(mustBeTrivial)
     {
     }
 
     void eval(EvalState & state, Env & env, Value & v) override
     {
+        SourcePath path{ref<SourceAccessor>(accessor->shared_from_this()), canonPath};
+
         printTalkative("evaluating file '%s'", path);
 
         auto e = state.parseExprFromFile(path);
