@@ -210,6 +210,20 @@ TEST_F(EvalStateLifetimeTest, pathLiteralReleasesRootFS)
                 }).expired());
 }
 
+TEST_F(EvalStateLifetimeTest, evalFileReleasesRootFS)
+{
+    auto tmpDir = createTempDir();
+    AutoDelete delTmpDir(tmpDir, true);
+    auto file = tmpDir / "file.nix";
+    writeFile(file, "{ x = 1; }");
+
+    EXPECT_TRUE(rootFSAfter([&](EvalState & st) {
+                    Value v;
+                    st.evalFile(st.rootPath(CanonPath(file.string())), v);
+                    st.forceValue(v, noPos);
+                }).expired());
+}
+
 class PureEvalTest : public LibExprTest
 {
 public:
