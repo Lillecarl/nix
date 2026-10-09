@@ -1577,6 +1577,10 @@ void EvalState::callFunction(Value & fun, std::span<Value * const> args, Value &
 {
     auto _level = addCallDepth(pos);
 
+    /* Every loop in the language is a chain of calls, so this makes a
+       pure evaluation interruptible. */
+    checkInterrupt();
+
     auto neededHooks = profiler.getNeededHooks();
     if (neededHooks.test(EvalProfiler::preFunctionCall)) [[unlikely]]
         profiler.preFunctionCallHook(*this, fun, args, pos);
