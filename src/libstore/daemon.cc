@@ -341,6 +341,9 @@ static void performOp(
             WorkerProto::Op::AddTempRoot,
             // Used by nix cli, restricted store will prevent it from seeing derivations it shouldn't
             WorkerProto::Op::IsValidPath,
+            // Used by builtins.storePath and builtins.appendContext. The restricted
+            // builder only checks that the path is already allowed, and substitutes nothing
+            WorkerProto::Op::EnsurePath,
         };
         if (std::ranges::find(validOperations, op) == validOperations.end()) {
             throw Error("Operation %d not allowed inside derivation", op);
