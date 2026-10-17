@@ -212,11 +212,9 @@ struct ExprString : Expr
 
 struct ExprPath : Expr
 {
-    ref<SourceAccessor> accessor;
     Value v;
 
     ExprPath(std::pmr::polymorphic_allocator<char> & alloc, ref<SourceAccessor> accessor, std::string_view sv)
-        : accessor(accessor)
     {
         v.mkPath(&*accessor, StringData::make(*alloc.resource(), sv));
     }
