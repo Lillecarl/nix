@@ -180,6 +180,29 @@ TEST_F(EvalStateTest, getBuiltin_fail)
     ASSERT_THROW(state.getBuiltin("nonexistent"), EvalError);
 }
 
+TEST_F(EvalStateTest, freesItsPrimOps)
+{
+    // The state copies the primop, and with it the lambda that holds `token`.
+    auto token = std::make_shared<int>(0);
+    std::weak_ptr<int> weak = token;
+    {
+        bool readOnlyMode = true;
+        EvalSettings settings{readOnlyMode};
+        settings.nixPath = {};
+        settings.extraPrimOps.push_back(
+            PrimOp{
+                .name = "probe",
+                .args = {"x"},
+                .impl = [token](EvalState &, CallSite, Value * const * args, Value & v) { v = *args[0]; },
+            });
+        token.reset();
+        EvalState state2({}, store, fetchSettings, settings, nullptr);
+        settings.extraPrimOps.clear();
+        ASSERT_FALSE(weak.expired());
+    }
+    EXPECT_TRUE(weak.expired());
+}
+
 class PureEvalTest : public LibExprTest
 {
 public:
