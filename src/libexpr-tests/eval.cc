@@ -1,6 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <gtest/gtest-spi.h>
+#include <nlohmann/json.hpp>
 
 #include <stdexcept>
 
@@ -178,6 +179,15 @@ TEST_F(EvalStateTest, getBuiltin_ok)
 TEST_F(EvalStateTest, getBuiltin_fail)
 {
     ASSERT_THROW(state.getBuiltin("nonexistent"), EvalError);
+}
+
+TEST_F(EvalStateTest, getStatistics)
+{
+    eval("let f = x: x; in f 1");
+    auto stats = state.getStatistics();
+    ASSERT_TRUE(stats.is_object());
+    for (auto key : {"cpuTime", "envs", "values", "sets", "nrThunks", "nrFunctionCalls"})
+        EXPECT_TRUE(stats.contains(key)) << key;
 }
 
 class PureEvalTest : public LibExprTest
