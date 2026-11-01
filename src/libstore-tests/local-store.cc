@@ -310,6 +310,23 @@ TEST_F(LocalStorePathInfoCacheTest, addSignaturesToInvalidPath)
     EXPECT_FALSE(store->isValidPath(path));
 }
 
+TEST(LocalStore, twoStoresInOneProcessKeepTheirTempRoots)
+{
+    AutoDelete tempStoreDir{canonPath(createTempDir(), /*resolveSymlinks=*/true)};
+    auto config = std::make_shared<LocalStoreConfig>(tempStoreDir.path(), StoreConfig::Params{});
+    auto first = std::make_shared<LocalStore>(ref{config});
+    auto second = std::make_shared<LocalStore>(ref{config});
+
+    const StorePath firstPath{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-first"};
+    const StorePath secondPath{"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-second"};
+    first->addTempRoot(firstPath);
+    second->addTempRoot(secondPath);
+
+    auto roots = first->findRoots(false);
+    EXPECT_TRUE(roots.contains(firstPath));
+    EXPECT_TRUE(roots.contains(secondPath));
+}
+
 #endif
 
 } // namespace nix

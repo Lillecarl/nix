@@ -55,14 +55,16 @@ void LocalStore::createTempRootsFile()
 {
     auto fdTempRoots(_fdTempRoots.lock());
 
-    /* Create the temporary roots file for this process. */
+    /* Create the temporary roots file for this store. */
     if (*fdTempRoots)
         return;
 
     while (1) {
         if (pathExists(fnTempRoots))
             /* It *must* be stale, since there can be no two
-               processes with the same pid. */
+               processes with the same pid, and no two stores in
+               this process with the same file (see
+               `nextTempRootsName`). */
             tryUnlink(fnTempRoots);
 
         *fdTempRoots = openLockFile(fnTempRoots, true);

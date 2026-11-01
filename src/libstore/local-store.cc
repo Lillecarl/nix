@@ -20,6 +20,7 @@
 #include "nix/store/store-registration.hh"
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 
 #include <memory>
@@ -122,6 +123,21 @@ struct LocalStore::State::Stmts
     SQLiteStmt QueryValidPaths;
 };
 
+/**
+ * The name of the temporary roots file of a new `LocalStore`.
+ *
+ * `createTempRootsFile` deletes a file with this name as stale, which is
+ * only correct if no other store in this process uses it. So the first
+ * store gets the process ID, and each later one adds a counter.
+ */
+static std::string nextTempRootsName()
+{
+    static std::atomic<uint64_t> counter{0};
+    auto pid = std::to_string(getpid());
+    auto n = counter++;
+    return n == 0 ? pid : pid + "-" + std::to_string(n);
+}
+
 LocalStore::LocalStore(ref<const Config> config)
     : Store{*config}
     , LocalFSStore{*config}
@@ -132,7 +148,7 @@ LocalStore::LocalStore(ref<const Config> config)
     , reservedPath(dbDir / "reserved")
     , schemaPath(dbDir / "schema")
     , tempRootsDir(config->stateDir.get() / "temproots")
-    , fnTempRoots(tempRootsDir / std::to_string(getpid()))
+    , fnTempRoots(tempRootsDir / nextTempRootsName())
 {
     auto state(_state->lock());
     state->stmts = std::make_unique<State::Stmts>();
