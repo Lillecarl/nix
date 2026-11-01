@@ -327,7 +327,7 @@ EvalState::EvalState(
     , baseEnv(mem.allocEnv(BASE_ENV_SIZE))
 #endif
     , staticBaseEnv{std::make_shared<StaticEnv>(nullptr, nullptr)}
-    , countCalls(getEnv("NIX_COUNT_CALLS").value_or("0") != "0")
+    , countCalls(settings.countCalls || getEnv("NIX_COUNT_CALLS").value_or("0") != "0")
     , primOpCalls(make_ref<decltype(primOpCalls)::element_type>())
     , functionCalls(make_ref<decltype(functionCalls)::element_type>())
     , attrSelects(make_ref<decltype(attrSelects)::element_type>())

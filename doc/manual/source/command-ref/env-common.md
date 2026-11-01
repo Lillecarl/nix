@@ -102,7 +102,8 @@ See the [configuration file](@docroot@/command-ref/conf-file.md#configuration-fi
 
   If set to `1`, Nix will print how often functions were called during
   Nix expression evaluation. This is useful for profiling your Nix
-  expressions.
+  expressions. The [`count-calls`](@docroot@/command-ref/conf-file.md#conf-count-calls)
+  setting does the same.
 
 - <span id="env-GC_INITIAL_HEAP_SIZE">[`GC_INITIAL_HEAP_SIZE`](#env-GC_INITIAL_HEAP_SIZE)</span>
 

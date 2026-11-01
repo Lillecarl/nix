@@ -253,6 +253,18 @@ public:
           - or the prefix is a URI scheme ended by a colon `:` and the URI has the same scheme.
         )"};
 
+    Setting<bool> countCalls{
+        this,
+        false,
+        "count-calls",
+        R"(
+          If set to `true`, the evaluator counts how often each primop and each function is called, and how often each attribute is selected.
+          The counts appear in the statistics that [`NIX_SHOW_STATS`](@docroot@/command-ref/env-common.md#env-NIX_SHOW_STATS) prints.
+
+          Counting costs time and memory, so it is off by default.
+          The [`NIX_COUNT_CALLS`](@docroot@/command-ref/env-common.md#env-NIX_COUNT_CALLS) environment variable also turns it on.
+        )"};
+
     Setting<bool> traceFunctionCalls{
         this,
         false,
