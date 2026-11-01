@@ -1110,8 +1110,19 @@ public:
 
     /**
      * Print statistics, unconditionally, cheaply, without performing a GC first.
+     *
+     * Writes `getStatistics()` to stderr, or to the file that
+     * `NIX_SHOW_STATS_PATH` names.
      */
     void printStatistics();
+
+    /**
+     * The statistics that `printStatistics` prints, for callers that
+     * embed the evaluator and cannot read its stderr.
+     *
+     * The counters only advance while `NIX_SHOW_STATS` is set.
+     */
+    nlohmann::json getStatistics();
 
     /**
      * Perform a full memory garbage collection - not incremental.
