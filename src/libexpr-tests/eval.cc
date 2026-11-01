@@ -180,6 +180,50 @@ TEST_F(EvalStateTest, getBuiltin_fail)
     ASSERT_THROW(state.getBuiltin("nonexistent"), EvalError);
 }
 
+/* rootFS mounts the store's accessor, which for a real store holds
+   ref<Store>. Anything that outlives the EvalState with a counted
+   reference to rootFS keeps the Store alive. */
+class EvalStateLifetimeTest : public LibExprTest
+{
+protected:
+    std::weak_ptr<SourceAccessor> rootFSAfter(std::function<void(EvalState &)> use)
+    {
+        std::weak_ptr<SourceAccessor> weak;
+        {
+            EvalState scoped({}, store, fetchSettings, evalSettings, nullptr);
+            weak = scoped.rootFS.get_ptr();
+            use(scoped);
+        }
+        return weak;
+    }
+};
+
+TEST_F(EvalStateLifetimeTest, unusedReleasesRootFS)
+{
+    EXPECT_TRUE(rootFSAfter([](EvalState &) {}).expired());
+}
+
+TEST_F(EvalStateLifetimeTest, pathLiteralReleasesRootFS)
+{
+    EXPECT_TRUE(rootFSAfter([](EvalState & st) {
+                    st.parseExprFromString("/some/path", st.rootPath(CanonPath::root));
+                }).expired());
+}
+
+TEST_F(EvalStateLifetimeTest, evalFileReleasesRootFS)
+{
+    auto tmpDir = createTempDir();
+    AutoDelete delTmpDir(tmpDir, true);
+    auto file = tmpDir / "file.nix";
+    writeFile(file, "{ x = 1; }");
+
+    EXPECT_TRUE(rootFSAfter([&](EvalState & st) {
+                    Value v;
+                    st.evalFile(st.rootPath(CanonPath(file.string())), v);
+                    st.forceValue(v, noPos);
+                }).expired());
+}
+
 class PureEvalTest : public LibExprTest
 {
 public:
