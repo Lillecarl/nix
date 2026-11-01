@@ -100,6 +100,10 @@ builtPathsWithResultToJSON(const std::vector<BuiltPathWithResult> & buildables, 
                 j["cpuUser"] = ((double) b.result->cpuUser->count()) / 1000000;
             if (b.result->cpuSystem)
                 j["cpuSystem"] = ((double) b.result->cpuSystem->count()) / 1000000;
+            if (b.result->memoryPeak)
+                j["memoryPeak"] = *b.result->memoryPeak;
+            if (b.result->memorySwapPeak)
+                j["memorySwapPeak"] = *b.result->memorySwapPeak;
         }
         res.push_back(j);
     }

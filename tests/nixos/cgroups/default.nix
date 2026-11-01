@@ -51,6 +51,33 @@
           "' /tmp/resource-usage.json"
       )
 
+      # The build allocates about 64 MiB, so a real measurement exceeds
+      # 32 MiB. `memory.swap.peak` needs Linux 6.5, so `memorySwapPeak` may
+      # be absent; the VM has no swap, so where present it must be zero.
+      host.succeed(
+          "jq --exit-status '.[0] | "
+          "has(\"memoryPeak\") and (.memoryPeak > 33554432) and "
+          "((has(\"memorySwapPeak\") | not) or (.memorySwapPeak == 0))"
+          "' /tmp/resource-usage.json"
+      )
+
+      # A failed build cannot be checked here: `nix build --json` prints
+      # nothing on failure. `BuildResultMergeBuildStats.keepsFailureAndTakesMemory`
+      # covers that case.
+
+      # The path is now valid, so nothing is built and no build fields may
+      # appear. This catches a merge that always writes a number.
+      host.succeed(
+          "NIX_REMOTE=daemon nix build --auto-allocate-uids --no-link --json "
+          "--file ${./resource-usage.nix} > /tmp/resource-usage-2.json"
+      )
+      host.succeed("cat /tmp/resource-usage-2.json >&2")
+      host.succeed(
+          "jq --exit-status '.[0] | "
+          "(has(\"memoryPeak\") | not) and (has(\"startTime\") | not)"
+          "' /tmp/resource-usage-2.json"
+      )
+
       # Start build in background
       host.execute("NIX_REMOTE=daemon nix build --auto-allocate-uids --file ${./hang.nix} >&2 &")
       service = "/sys/fs/cgroup/system.slice/nix-daemon.service"

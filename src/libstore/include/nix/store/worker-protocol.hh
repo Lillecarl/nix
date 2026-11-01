@@ -157,6 +157,12 @@ struct WorkerProto
     static constexpr std::string_view featureAddTempRoots = "addTempRoots";
 
     /**
+     * Feature to send the peak memory usage and the peak swap usage of
+     * a build in `BuildResult`.
+     */
+    static constexpr std::string_view featureBuildResultMemory = "build-result-memory";
+
+    /**
      * A unidirectional read connection, to be used by the read half of the
      * canonical serializers below.
      */
@@ -376,6 +382,8 @@ template<>
 DECLARE_WORKER_SERIALISER(std::optional<TrustedFlag>);
 template<>
 DECLARE_WORKER_SERIALISER(std::optional<std::chrono::microseconds>);
+template<>
+DECLARE_WORKER_SERIALISER(std::optional<uint64_t>);
 template<>
 DECLARE_WORKER_SERIALISER(WorkerProto::ClientHandshakeInfo);
 

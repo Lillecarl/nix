@@ -75,6 +75,8 @@ void BuildResult::mergeBuildStats(const BuildResult & other)
     };
     mergeMax(cpuUser, other.cpuUser);
     mergeMax(cpuSystem, other.cpuSystem);
+    mergeMax(memoryPeak, other.memoryPeak);
+    mergeMax(memorySwapPeak, other.memorySwapPeak);
 }
 
 bool BuildResult::operator==(const BuildResult &) const noexcept = default;
@@ -180,6 +182,12 @@ void adl_serializer<nix::BuildResult>::to_json(json & res, const nix::BuildResul
     if (br.cpuSystem.has_value()) {
         res["cpuSystem"] = br.cpuSystem->count();
     }
+    if (br.memoryPeak.has_value()) {
+        res["memoryPeak"] = *br.memoryPeak;
+    }
+    if (br.memorySwapPeak.has_value()) {
+        res["memorySwapPeak"] = *br.memorySwapPeak;
+    }
 
     // Handle success or failure variant
     std::visit(
@@ -217,6 +225,12 @@ nix::BuildResult adl_serializer<nix::BuildResult>::from_json(const json & _json)
     }
     if (auto cpuSystem = optionalValueAt(json, "cpuSystem")) {
         br.cpuSystem = std::chrono::microseconds(getUnsigned(*cpuSystem));
+    }
+    if (auto memoryPeak = optionalValueAt(json, "memoryPeak")) {
+        br.memoryPeak = getUnsigned(*memoryPeak);
+    }
+    if (auto memorySwapPeak = optionalValueAt(json, "memorySwapPeak")) {
+        br.memorySwapPeak = getUnsigned(*memorySwapPeak);
     }
 
     // Determine success or failure based on success field
