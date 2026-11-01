@@ -20,6 +20,11 @@ ref<SrcToStore> fetchers::Settings::createSrcToStore()
     return make_ref<SrcToStore>();
 }
 
+void fetchers::Settings::forgetSrcToStore(const SourcePath & path) const
+{
+    srcToStore->cache.erase_if([&](const auto & entry) { return std::get<0>(entry.first) == path; });
+}
+
 fetchers::Cache::Key
 makeSourcePathToHashCacheKey(std::string_view fingerprint, ContentAddressMethod method, const CanonPath & path)
 {

@@ -16,6 +16,7 @@ namespace nix {
 struct GitRepo;
 struct SrcToStore;
 struct GitRepoPool;
+struct SourcePath;
 
 } // namespace nix
 
@@ -153,6 +154,13 @@ struct Settings : public Config
     ref<Cache> getCache() const;
 
     ref<GitRepo> getTarballCache() const;
+
+    /**
+     * Drop every `srcToStore` entry for `path`, so that the next
+     * fetchToStore() of `path` reads it again instead of returning the
+     * store path of an older copy.
+     */
+    void forgetSrcToStore(const SourcePath & path) const;
 
     /**
      * In-memory cache for calls to fetchToStore(); maps source paths to their store
