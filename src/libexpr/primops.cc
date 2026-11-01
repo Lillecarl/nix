@@ -5335,7 +5335,7 @@ void EvalState::createBaseEnv(const EvalSettings & evalSettings)
     Value v;
 
     /* `builtins' must be first! */
-    v.mkAttrs(buildBindings(128).finish());
+    v.mkAttrs(buildBindings(baseEnvSize).finish());
     addConstant(
         "builtins",
         v,

@@ -232,7 +232,16 @@ static Symbol getName(const AttrName & name, EvalState & state, Env & env)
     }
 }
 
-static constexpr size_t BASE_ENV_SIZE = 128;
+/**
+ * Upper bound on the entries that `createBaseEnv` adds besides the
+ * registered primops and `EvalSettings::extraPrimOps`.
+ */
+static constexpr size_t fixedBaseEnvEntries = 32;
+
+static size_t baseEnvSizeFor(const EvalSettings & settings)
+{
+    return fixedBaseEnvEntries + RegisterPrimOp::primOps().size() + settings.extraPrimOps.size();
+}
 
 EvalMemory::EvalMemory()
 {
@@ -320,11 +329,12 @@ EvalState::EvalState(
     , positionToDocComment(make_ref<decltype(positionToDocComment)::element_type>())
     , lookupPathResolved(make_ref<decltype(lookupPathResolved)::element_type>())
     , regexCache(makeRegexCache())
+    , baseEnvSize(baseEnvSizeFor(settings))
 #if NIX_USE_BOEHMGC
-    , baseEnvP(std::allocate_shared<Env *>(traceable_allocator<Env *>(), &mem.allocEnv(BASE_ENV_SIZE)))
+    , baseEnvP(std::allocate_shared<Env *>(traceable_allocator<Env *>(), &mem.allocEnv(baseEnvSize)))
     , baseEnv(**baseEnvP)
 #else
-    , baseEnv(mem.allocEnv(BASE_ENV_SIZE))
+    , baseEnv(mem.allocEnv(baseEnvSize))
 #endif
     , staticBaseEnv{std::make_shared<StaticEnv>(nullptr, nullptr)}
     , countCalls(getEnv("NIX_COUNT_CALLS").value_or("0") != "0")
@@ -508,6 +518,7 @@ void EvalState::addConstant(const std::string & name, Value * v, Constant info)
 
         /* Install value the base environment. */
         staticBaseEnv->vars.emplace_back(symbols.create(name), baseEnvDispl);
+        assert(baseEnvDispl < baseEnvSize);
         baseEnv.values[baseEnvDispl++] = v;
         const_cast<Bindings *>(getBuiltins().attrs())->push_back(Attr(symbols.create(name2), v));
     }
@@ -577,6 +588,7 @@ Value * EvalState::addPrimOp(PrimOp && primOp)
         internalPrimOps.emplace(primOp.name, v);
     else {
         staticBaseEnv->vars.emplace_back(envName, baseEnvDispl);
+        assert(baseEnvDispl < baseEnvSize);
         baseEnv.values[baseEnvDispl++] = v;
         const_cast<Bindings *>(getBuiltins().attrs())->push_back(Attr(symbols.create(primOp.name), v));
     }
