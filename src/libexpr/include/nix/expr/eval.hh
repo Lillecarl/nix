@@ -886,6 +886,13 @@ public:
      */
     SingleDerivedPath coerceToSingleDerivedPath(const PosIdx pos, Value & v, std::string_view errorCtx);
 
+    /**
+     * The number of slots in `baseEnv`, and the capacity of the
+     * `builtins` attribute set. Both are allocated before
+     * `createBaseEnv` fills them, and neither can grow.
+     */
+    const size_t baseEnvSize;
+
 #if NIX_USE_BOEHMGC
     /** A GC root for the baseEnv reference. */
     const std::shared_ptr<Env *> baseEnvP;

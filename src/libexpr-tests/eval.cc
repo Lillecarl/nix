@@ -180,6 +180,38 @@ TEST_F(EvalStateTest, getBuiltin_fail)
     ASSERT_THROW(state.getBuiltin("nonexistent"), EvalError);
 }
 
+/**
+ * More primops than the stock builtins, as an embedder could register.
+ */
+class ManyPrimOpsTest : public LibExprTest
+{
+public:
+    static constexpr size_t count = 300;
+
+    ManyPrimOpsTest()
+        : LibExprTest(openStore("dummy://"), [](bool & readOnlyMode) {
+            EvalSettings settings{readOnlyMode};
+            settings.nixPath = {};
+            for (size_t i = 0; i < count; ++i)
+                settings.extraPrimOps.push_back(
+                    PrimOp{
+                        .name = fmt("extra%d", i),
+                        .args = {"x"},
+                        .impl = [](EvalState &, CallSite, Value * const * args, Value & v) { v = *args[0]; },
+                    });
+            return settings;
+        })
+    {
+    }
+};
+
+TEST_F(ManyPrimOpsTest, allAreReachable)
+{
+    ASSERT_THAT(eval("builtins.extra0 1"), IsIntEq(1));
+    ASSERT_THAT(eval(fmt("builtins.extra%d 2", count - 1)), IsIntEq(2));
+    ASSERT_THAT(eval("builtins.toString true"), IsStringEq("1"));
+}
+
 class PureEvalTest : public LibExprTest
 {
 public:
