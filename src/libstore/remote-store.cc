@@ -36,6 +36,8 @@ namespace nix {
 
 void RemoteStoreConfig::anchor() {}
 
+std::atomic<int> remoteVerbosity{-1};
+
 /* TODO: Separate these store types into different files, give them better names */
 RemoteStore::RemoteStore(const Config & config)
     : Store{config}
@@ -133,8 +135,9 @@ void RemoteStore::initConnection(Connection & conn)
 
 void RemoteStore::setOptions(Connection & conn)
 {
+    auto sent = remoteVerbosity.load(std::memory_order_relaxed);
     conn.to << WorkerProto::Op::SetOptions << settings.keepFailed << settings.getWorkerSettings().keepGoing
-            << settings.getWorkerSettings().tryFallback << std::to_underlying(verbosity)
+            << settings.getWorkerSettings().tryFallback << std::to_underlying(sent < 0 ? verbosity : (Verbosity) sent)
             << settings.getWorkerSettings().maxBuildJobs << settings.getWorkerSettings().maxSilentTime << true
             << std::to_underlying(settings.verboseBuild ? lvlError : lvlVomit) << 0 // obsolete log type
             << 0                                                                    /* obsolete print build trace */
