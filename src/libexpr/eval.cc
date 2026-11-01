@@ -553,7 +553,7 @@ Value * EvalState::addPrimOp(PrimOp && primOp)
     if (primOp.arity == 0) {
         primOp.arity = 1;
         auto vPrimOp = allocValue();
-        vPrimOp->mkPrimOp(new PrimOp(std::move(primOp)));
+        vPrimOp->mkPrimOp(&primOps.emplace_back(std::move(primOp)));
         Value v;
         v.mkApp(vPrimOp, vPrimOp);
         auto & primOp1 = *vPrimOp->primOp();
@@ -571,7 +571,7 @@ Value * EvalState::addPrimOp(PrimOp && primOp)
         primOp.name = primOp.name.substr(2);
 
     Value * v = allocValue();
-    v->mkPrimOp(new PrimOp(primOp));
+    v->mkPrimOp(&primOps.emplace_back(primOp));
 
     if (primOp.internal)
         internalPrimOps.emplace(primOp.name, v);

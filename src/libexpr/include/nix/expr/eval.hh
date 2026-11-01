@@ -24,6 +24,7 @@
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/concurrent_flat_map_fwd.hpp>
 
+#include <list>
 #include <map>
 #include <optional>
 #include <functional>
@@ -926,6 +927,16 @@ public:
 private:
 
     unsigned int baseEnvDispl = 0;
+
+    /**
+     * The primops of `baseEnv` and `internalPrimOps`.
+     *
+     * A `Value` cannot own its `PrimOp`: values live in collector
+     * memory, and the collector runs no destructors. So the state owns
+     * them, and frees them when it is destroyed. A list, because
+     * values point at its elements, and those must not move.
+     */
+    std::list<PrimOp> primOps;
 
     void createBaseEnv(const EvalSettings & settings);
 
