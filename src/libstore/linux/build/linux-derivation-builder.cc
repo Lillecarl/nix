@@ -50,6 +50,10 @@
 #    define OPEN_TREE_CLOEXEC O_CLOEXEC
 #  endif
 
+#  ifndef AT_RECURSIVE
+#    define AT_RECURSIVE 0x8000
+#  endif
+
 static int open_tree(int dirfd, const char * filename, unsigned int flags)
 {
     return ::syscall(__NR_open_tree, dirfd, filename, flags);
