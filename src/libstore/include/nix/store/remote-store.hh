@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include <atomic>
 #include <limits>
 #include <set>
 #include <string>
@@ -21,6 +22,12 @@ struct FdSource;
 template<typename T>
 class Pool;
 class RemoteFSAccessor;
+
+/**
+ * The level `RemoteStore::setOptions` asks a daemon to log at. Below
+ * zero, it sends `verbosity`.
+ */
+extern std::atomic<int> remoteVerbosity;
 
 struct RemoteStoreConfig : virtual StoreConfig
 {
