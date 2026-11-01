@@ -81,6 +81,7 @@ suites = [
       'completions.sh',
       'compression-levels.sh',
       'config.sh',
+      'count-calls.sh',
       'db-migration.sh',
       'delete-no-keep.sh',
       'dependencies.sh',
