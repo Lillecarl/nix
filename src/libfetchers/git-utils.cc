@@ -48,6 +48,7 @@
 #include <boost/unordered/concurrent_flat_set.hpp>
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
+#include <cstring>
 #include <iostream>
 #include <regex>
 #include <ranges>
@@ -60,7 +61,10 @@ struct hash<git_oid>
 {
     size_t operator()(const git_oid & oid) const
     {
-        return *(size_t *) oid.id;
+        // `git_oid` is a byte array, aligned to 1.
+        size_t hash;
+        std::memcpy(&hash, oid.id, sizeof(hash));
+        return hash;
     }
 };
 
