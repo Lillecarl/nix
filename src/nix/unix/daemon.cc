@@ -366,6 +366,14 @@ static void daemonLoop(
        called during option parsing (quite janky). */
     workerEnv[OS_STR("NIX_CONFIG")] = workerConfig;
 
+#ifdef __linux__
+    /* Workers start in the `nix-daemon` sub-cgroup created above, so their
+       own cgroup is the wrong parent for build cgroups: it has processes,
+       so it cannot delegate the controllers we enabled. */
+    if (settings.getLocalSettings().useCgroups)
+        workerEnv["_NIX_DAEMON_ROOT_CGROUP"] = linux::getRootCgroup().abs();
+#endif
+
     /* lvlInfo is the default used by nix-daemon (or anything using RegisterLegacyCommand for that matter). */
     std::vector<OsString> workerVerbosityFlags = [&]() -> std::vector<OsString> {
         if (verbosity > lvlInfo)
@@ -570,6 +578,15 @@ static void runDaemon(
     std::visit(
         overloaded{
             [&](StdIO) {
+#ifdef __linux__
+                /* Not unsetenv(): initNix() already started the signal
+                   handler thread, and unsetenv() is not thread-safe.
+                   Builders get a fresh environment, so the variable does
+                   not reach them. */
+                if (auto rootCgroup = getEnv("_NIX_DAEMON_ROOT_CGROUP"))
+                    linux::setRootCgroup(CanonPath(*rootCgroup));
+#endif
+
                 auto store = storeConfig->openStore();
                 store->init();
 

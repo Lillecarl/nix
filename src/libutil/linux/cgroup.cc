@@ -7,6 +7,7 @@
 #include <boost/unordered/unordered_flat_set.hpp>
 #include <chrono>
 #include <cmath>
+#include <mutex>
 #include <regex>
 #include <thread>
 
@@ -168,10 +169,21 @@ CanonPath getCurrentCgroup()
     return CanonPath{ourCgroup};
 }
 
+static std::mutex rootCgroupMutex;
+static std::optional<CanonPath> rootCgroup;
+
 CanonPath getRootCgroup()
 {
-    static auto rootCgroup = getCurrentCgroup();
-    return rootCgroup;
+    std::lock_guard lock(rootCgroupMutex);
+    if (!rootCgroup)
+        rootCgroup = getCurrentCgroup();
+    return *rootCgroup;
+}
+
+void setRootCgroup(CanonPath cgroup)
+{
+    std::lock_guard lock(rootCgroupMutex);
+    rootCgroup = std::move(cgroup);
 }
 
 } // namespace nix::linux
