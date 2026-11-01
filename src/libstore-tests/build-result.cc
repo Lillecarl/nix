@@ -17,6 +17,68 @@ public:
     }
 };
 
+/* ----------------------------------------------------------------------------
+ * mergeBuildStats
+ * --------------------------------------------------------------------------*/
+
+TEST(BuildResultMergeBuildStats, takesEarliestStartAndLatestStop)
+{
+    BuildResult a{.startTime = 30, .stopTime = 50};
+    a.mergeBuildStats(BuildResult{.startTime = 20, .stopTime = 40});
+
+    EXPECT_EQ(a.startTime, 20);
+    EXPECT_EQ(a.stopTime, 50);
+}
+
+TEST(BuildResultMergeBuildStats, ignoresUnsetStartTime)
+{
+    /* A goal that did not run has a startTime of 0. This value does not
+       show a start at the epoch. */
+    BuildResult a{.startTime = 30, .stopTime = 50};
+    a.mergeBuildStats(BuildResult{.startTime = 0, .stopTime = 0});
+
+    EXPECT_EQ(a.startTime, 30);
+    EXPECT_EQ(a.stopTime, 50);
+}
+
+TEST(BuildResultMergeBuildStats, takesMaximumNotSum)
+{
+    /* The sub-goals are the outputs of one derivation, and they report
+       the same build. A sum multiplies the usage by the number of the
+       outputs. */
+    BuildResult a{
+        .timesBuilt = 1,
+        .cpuUser = std::chrono::microseconds(500),
+        .cpuSystem = std::chrono::microseconds(600),
+    };
+    BuildResult b = a;
+
+    a.mergeBuildStats(b);
+
+    EXPECT_EQ(a.timesBuilt, 1u);
+    EXPECT_EQ(a.cpuUser->count(), 500);
+    EXPECT_EQ(a.cpuSystem->count(), 600);
+}
+
+TEST(BuildResultMergeBuildStats, fillsInMissingValues)
+{
+    BuildResult a{};
+    a.mergeBuildStats(BuildResult{.cpuUser = std::chrono::microseconds(500)});
+
+    ASSERT_TRUE(a.cpuUser.has_value());
+    EXPECT_EQ(a.cpuUser->count(), 500);
+    EXPECT_FALSE(a.cpuSystem.has_value());
+}
+
+TEST(BuildResultMergeBuildStats, keepsExistingWhenOtherIsUnset)
+{
+    BuildResult a{.cpuUser = std::chrono::microseconds(500)};
+    a.mergeBuildStats(BuildResult{});
+
+    ASSERT_TRUE(a.cpuUser.has_value());
+    EXPECT_EQ(a.cpuUser->count(), 500);
+}
+
 using nlohmann::json;
 
 struct BuildResultJsonTest : BuildResultTest,

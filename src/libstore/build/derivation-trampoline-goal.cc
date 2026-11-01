@@ -182,6 +182,12 @@ Goal::Co<DerivationTrampolineGoal::Result> DerivationTrampolineGoal::haveDerivat
 
     trace("outer build done");
 
+    /* The returned result replaces `buildResult`, so it must carry the
+       sub-goals' timing and resource fields, for a failure too. */
+    BuildResult result;
+    for (auto & g : concreteDrvGoals)
+        result.mergeBuildStats(g->buildResult);
+
     if (nrFailed != 0) {
         auto gi = std::ranges::find_if(concreteDrvGoals, [](const GoalPtr & goal) -> bool {
             auto exitCode = goal->exitCode;
@@ -199,7 +205,8 @@ Goal::Co<DerivationTrampolineGoal::Result> DerivationTrampolineGoal::haveDerivat
         /* Report the exit status of *some* failing goal. This might not be strictly
            correct, since multiple subgoals can fail independently, but this should be
            a good enough heuristic without --keep-going. */
-        co_return Result{exitCode, BuildResult{.inner = *failure}};
+        result.inner = *failure;
+        co_return Result{exitCode, std::move(result)};
     }
 
     SingleDrvOutputs outputs;
@@ -239,16 +246,11 @@ Goal::Co<DerivationTrampolineGoal::Result> DerivationTrampolineGoal::haveDerivat
         return toPriority(a) < toPriority(b);
     };
 
-    co_return Result{
-        ecSuccess,
-        BuildResult{
-            .inner =
-                BuildResult::Success{
-                    .status = std::ranges::min(statuses, compareSuccesses),
-                    .builtOutputs = std::move(outputs),
-                },
-        },
+    result.inner = BuildResult::Success{
+        .status = std::ranges::min(statuses, compareSuccesses),
+        .builtOutputs = std::move(outputs),
     };
+    co_return Result{ecSuccess, std::move(result)};
 }
 
 } // namespace nix
