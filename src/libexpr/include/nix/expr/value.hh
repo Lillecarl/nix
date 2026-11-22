@@ -669,6 +669,7 @@ class alignas(16)
         return std::bit_cast<T>(val & ~discriminatorMask);
     }
 
+    [[gnu::always_inline]]
     PrimaryDiscriminator getPrimaryDiscriminator() const noexcept
     {
         return static_cast<PrimaryDiscriminator>(p0 & discriminatorMask);
@@ -679,6 +680,7 @@ class alignas(16)
         assert((val & discriminatorMask) == 0 && "Pointer is not 8 bytes aligned");
     }
 
+    [[gnu::always_inline]]
     void finish(PackedPointer p0_, PackedPointer p1_)
     {
         // Note: p1 *must* be updated before p0.
@@ -751,6 +753,7 @@ class alignas(16)
 
 protected:
     /** Get internal type currently occupying the storage. */
+    [[gnu::always_inline]]
     InternalType getInternalType() const noexcept
     {
         switch (auto pd = getPrimaryDiscriminator()) {
@@ -919,6 +922,7 @@ protected:
      * Copy a value. This is not allowed to be a thunk to avoid
      * accidental work duplication.
      */
+    [[gnu::always_inline]]
     ValueStorage & operator=(const ValueStorage & v)
     {
         auto p0_ = v.p0.load(std::memory_order_acquire);
@@ -954,7 +958,11 @@ public:
         p0.store(pdPending, std::memory_order_relaxed);
     }
 
-    void force(EvalState & state, PosIdx pos);
+    [[gnu::always_inline]]
+    inline void force(EvalState & state, PosIdx pos);
+
+    [[gnu::noinline]]
+    void forceSlow(EvalState & state, PosIdx pos);
 
 private:
 
@@ -1168,6 +1176,16 @@ struct Value : public ValueStorage<sizeof(void *)>
 {
     friend std::string showType(const Value & v);
 
+    Value() = default;
+    Value(const Value &) = default;
+
+    [[gnu::always_inline]]
+    Value & operator=(const Value & v)
+    {
+        ValueStorage::operator=(v);
+        return *this;
+    }
+
     /**
      * Empty list constant.
      *
@@ -1273,6 +1291,7 @@ public:
      * Returns the normal type of a Value. This only returns nThunk if
      * the Value hasn't been forceValue'd
      */
+    [[gnu::always_inline]]
     inline ValueType type() const
     {
         /* Explicit lookup table. switch() might compile down (and it does at least with GCC 14)

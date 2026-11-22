@@ -115,7 +115,18 @@ Env & EvalMemory::allocEnv(size_t size)
 [[gnu::tls_model("initial-exec")]] extern thread_local uint32_t myEvalThreadId;
 
 template<std::size_t ptrSize>
-void ValueStorage<ptrSize, std::enable_if_t<detail::useBitPackedValueStorage<ptrSize>>>::force(
+[[gnu::always_inline]] inline void
+ValueStorage<ptrSize, std::enable_if_t<detail::useBitPackedValueStorage<ptrSize>>>::force(EvalState & state, PosIdx pos)
+{
+    auto p0_ = p0.load(std::memory_order_acquire);
+    auto pd = static_cast<PrimaryDiscriminator>(p0_ & discriminatorMask);
+    if (pd != pdThunk && pd != pdPending && pd != pdAwaited && InternalType(p0_ & 0xff) != tFailed) [[likely]]
+        return;
+    forceSlow(state, pos);
+}
+
+template<std::size_t ptrSize>
+void ValueStorage<ptrSize, std::enable_if_t<detail::useBitPackedValueStorage<ptrSize>>>::forceSlow(
     EvalState & state, PosIdx pos)
 {
     auto p0_ = p0.load(std::memory_order_acquire);
