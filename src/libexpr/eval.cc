@@ -340,6 +340,7 @@ EvalState::EvalState(
     , importResolutionCache(make_ref<decltype(importResolutionCache)::element_type>())
     , fileEvalCache(make_ref<decltype(fileEvalCache)::element_type>())
     , positionToDocComment(make_ref<decltype(positionToDocComment)::element_type>())
+    , namedLambdas(make_ref<decltype(namedLambdas)::element_type>())
     , lookupPathResolved(make_ref<decltype(lookupPathResolved)::element_type>())
 #if NIX_USE_BOEHMGC
     , baseEnvP(std::allocate_shared<Env *>(traceable_allocator<Env *>(), &mem.allocEnv(BASE_ENV_SIZE)))
@@ -1324,6 +1325,27 @@ Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
     return &inheritEnv;
 }
 
+ExprLambda & EvalState::namedLambda(ExprLambda & lambda, Symbol name)
+{
+    NamedLambdaKey key{&lambda, name};
+    ExprLambda * named = nullptr;
+    namedLambdas->cvisit(key, [&](const auto & i) { named = i.second; });
+    if (named)
+        return *named;
+
+    auto copy = mem.exprs.add<ExprLambda>(lambda);
+    copy->name = name;
+    if (auto body = dynamic_cast<ExprLambda *>(copy->body))
+        copy->body = &namedLambda(*body, name);
+    if (debugRepl)
+        if (auto env = getStaticEnv(lambda))
+            exprEnvs.insert(std::make_pair(copy, env));
+
+    named = copy;
+    namedLambdas->try_emplace_or_cvisit(key, copy, [&](const auto & i) { named = i.second; });
+    return *named;
+}
+
 void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
 {
     auto bindings = state.buildBindings(attrs->size() + dynamicAttrs->size());
@@ -1410,9 +1432,11 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
                 .withFrame(env, *this)
                 .debugThrow();
 
-        i.valueExpr->setName(nameSym);
+        Expr * valueExpr = i.valueExpr;
+        if (auto lambda = dynamic_cast<ExprLambda *>(valueExpr))
+            valueExpr = &state.namedLambda(*lambda, nameSym);
         /* Keep sorted order so find can catch duplicates */
-        bindings.insert(nameSym, i.valueExpr->maybeThunk(state, *dynamicEnv), i.pos);
+        bindings.insert(nameSym, valueExpr->maybeThunk(state, *dynamicEnv), i.pos);
         sort = true;
     }
 
