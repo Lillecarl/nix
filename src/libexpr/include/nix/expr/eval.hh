@@ -671,6 +671,7 @@ public:
      * application, call the function and overwrite `v` with the
      * result.  Otherwise, this is a no-op.
      */
+    [[gnu::always_inline]]
     inline void forceValue(Value & v, const PosIdx pos)
     {
         v.force(*this, pos);
