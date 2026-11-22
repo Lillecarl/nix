@@ -452,6 +452,16 @@ public:
         ;
     }
 
+    /**
+     * The lambda `lambda`, named `name`. A lambda that is the value of
+     * a dynamic attribute takes the attribute's name, and one lambda in
+     * the AST can be evaluated under many names, also at the same time
+     * on different threads. So this returns a copy per name instead of
+     * renaming the shared lambda. A curried lambda passes the name on
+     * to the lambdas in its body, as `ExprLambda::setName()` does.
+     */
+    ExprLambda & namedLambda(ExprLambda & lambda, Symbol name);
+
     /** Whether a debug repl can be started. If `false`, `runDebugRepl(error)` will return without starting a repl. */
     bool canDebug();
 
@@ -497,6 +507,22 @@ private:
      * Grouped by file.
      */
     const ref<boost::concurrent_flat_map<SourcePath, ref<DocCommentMap>>> positionToDocComment;
+
+    struct NamedLambdaHash
+    {
+        std::size_t operator()(const std::pair<const ExprLambda *, Symbol> & key) const noexcept
+        {
+            return std::hash<const ExprLambda *>{}(key.first) ^ (std::hash<Symbol>{}(key.second) * 0x9e3779b97f4a7c15);
+        }
+    };
+
+    /**
+     * Copies of lambdas defined as the value of a dynamic attribute,
+     * one per (lambda, attribute name). See `namedLambda()`.
+     */
+    const ref<
+        boost::concurrent_flat_map<std::pair<const ExprLambda *, Symbol>, std::unique_ptr<ExprLambda>, NamedLambdaHash>>
+        namedLambdas;
 
     LookupPath lookupPath;
 

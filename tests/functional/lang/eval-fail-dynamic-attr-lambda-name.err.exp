@@ -1,0 +1,28 @@
+error:
+       … while calling the 'seq' builtin
+         at /pwd/lang/eval-fail-dynamic-attr-lambda-name.nix:8:1:
+            7| in
+            8| builtins.seq alpha (builtins.seq beta (alpha { }))
+             | ^
+            9|
+
+       … while calling the 'seq' builtin
+         at /pwd/lang/eval-fail-dynamic-attr-lambda-name.nix:8:21:
+            7| in
+            8| builtins.seq alpha (builtins.seq beta (alpha { }))
+             |                     ^
+            9|
+
+       … from call site
+         at /pwd/lang/eval-fail-dynamic-attr-lambda-name.nix:8:40:
+            7| in
+            8| builtins.seq alpha (builtins.seq beta (alpha { }))
+             |                                        ^
+            9|
+
+       error: function 'alpha' called without required argument 'x'
+       at /pwd/lang/eval-fail-dynamic-attr-lambda-name.nix:4:20:
+            3| let
+            4|   mk = n: { ${n} = { x }: x; };
+             |                    ^
+            5|   alpha = (mk "alpha").alpha;

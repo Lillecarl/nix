@@ -359,6 +359,7 @@ EvalState::EvalState(
     , importResolutionCache(make_ref<decltype(importResolutionCache)::element_type>())
     , fileEvalCache(make_ref<decltype(fileEvalCache)::element_type>())
     , positionToDocComment(make_ref<decltype(positionToDocComment)::element_type>())
+    , namedLambdas(make_ref<decltype(namedLambdas)::element_type>())
     , lookupPathResolved(make_ref<decltype(lookupPathResolved)::element_type>())
 #if NIX_USE_BOEHMGC
     , baseEnvP(std::allocate_shared<Env *>(traceable_allocator<Env *>(), &mem.allocEnv(BASE_ENV_SIZE)))
@@ -1356,6 +1357,30 @@ Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
     return &inheritEnv;
 }
 
+ExprLambda & EvalState::namedLambda(ExprLambda & lambda, Symbol name)
+{
+    std::pair<const ExprLambda *, Symbol> key{&lambda, name};
+    ExprLambda * named = nullptr;
+    namedLambdas->cvisit(key, [&](const auto & i) { named = i.second.get(); });
+    if (named)
+        return *named;
+
+    auto copy = std::make_unique<ExprLambda>(lambda);
+    copy->name = name;
+    if (auto body = dynamic_cast<ExprLambda *>(copy->body))
+        copy->body = &namedLambda(*body, name);
+
+    /* Another thread may have made the same copy in the meantime; then
+       this one is dropped and both use the first. */
+    namedLambdas->try_emplace(key, std::move(copy));
+    namedLambdas->cvisit(key, [&](const auto & i) { named = i.second.get(); });
+
+    if (debugRepl)
+        if (auto env = getStaticEnv(lambda))
+            exprEnvs.insert(std::make_pair(named, env));
+    return *named;
+}
+
 void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
 {
     auto bindings = state.buildBindings(attrs->size() + dynamicAttrs->size());
@@ -1442,9 +1467,11 @@ void ExprAttrs::eval(EvalState & state, Env & env, Value & v)
                 .withFrame(env, *this)
                 .debugThrow();
 
-        i.valueExpr->setName(nameSym);
+        Expr * valueExpr = i.valueExpr;
+        if (auto lambda = dynamic_cast<ExprLambda *>(valueExpr))
+            valueExpr = &state.namedLambda(*lambda, nameSym);
         /* Keep sorted order so find can catch duplicates */
-        bindings.insert(nameSym, i.valueExpr->maybeThunk(state, *dynamicEnv), i.pos);
+        bindings.insert(nameSym, valueExpr->maybeThunk(state, *dynamicEnv), i.pos);
         sort = true;
     }
 
