@@ -17,6 +17,7 @@
 #include "nix/expr/search-path.hh"
 #include "nix/expr/repl-exit-status.hh"
 #include "nix/util/ref.hh"
+#include "nix/util/std-hash.hh"
 #include "nix/expr/counter.hh"
 
 // For `NIX_USE_BOEHMGC`, and if that's set, `GC_THREADS`
@@ -452,6 +453,16 @@ public:
         ;
     }
 
+    /**
+     * Return a copy of `lambda` named `name`. One lambda in the AST can
+     * be the value of a dynamic attribute under many names, so the name
+     * cannot be stored in the shared node. The copies live in `mem.exprs`
+     * and share the body and the formals of `lambda`. A curried lambda
+     * passes the name on to the lambda in its body, as
+     * `ExprLambda::setName()` does.
+     */
+    ExprLambda & namedLambda(ExprLambda & lambda, Symbol name);
+
     /** Whether a debug repl can be started. If `false`, `runDebugRepl(error)` will return without starting a repl. */
     bool canDebug();
 
@@ -497,6 +508,23 @@ private:
      * Grouped by file.
      */
     const ref<boost::concurrent_flat_map<SourcePath, ref<DocCommentMap>>> positionToDocComment;
+
+    using NamedLambdaKey = std::pair<const ExprLambda *, Symbol>;
+
+    struct NamedLambdaKeyHash
+    {
+        std::size_t operator()(const NamedLambdaKey & key) const noexcept
+        {
+            std::size_t seed = 0;
+            hash_combine(seed, key.first, key.second);
+            return seed;
+        }
+    };
+
+    /**
+     * The copies that `namedLambda()` makes, by original lambda and name.
+     */
+    const ref<boost::concurrent_flat_map<NamedLambdaKey, ExprLambda *, NamedLambdaKeyHash>> namedLambdas;
 
     LookupPath lookupPath;
 
