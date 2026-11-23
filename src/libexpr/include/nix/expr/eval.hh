@@ -16,6 +16,7 @@
 #include "nix/expr/search-path.hh"
 #include "nix/expr/repl-exit-status.hh"
 #include "nix/util/ref.hh"
+#include "nix/util/std-hash.hh"
 #include "nix/expr/counter.hh"
 
 // For `NIX_USE_BOEHMGC`, and if that's set, `GC_THREADS`
@@ -487,6 +488,18 @@ public:
         ;
     }
 
+    /**
+     * Get a copy of `lambda` with its name set to `name`.
+     *
+     * Dynamic attributes name their lambdas during evaluation, and the
+     * same lambda can end up under several names, so we can't call
+     * `setName()` on the shared node. The copies are cached per name,
+     * live in `mem.exprs` and share the body and formals with the
+     * original. Like `ExprLambda::setName()`, this also names the inner
+     * lambda of a curried function.
+     */
+    ExprLambda & namedLambda(ExprLambda & lambda, Symbol name);
+
     /** Whether a debug repl can be started. If `false`, `runDebugRepl(error)` will return without starting a repl. */
     bool canDebug();
 
@@ -538,6 +551,23 @@ private:
      * Grouped by file.
      */
     const ref<boost::concurrent_flat_map<SourcePath, ref<DocCommentMap>>> positionToDocComment;
+
+    using NamedLambdaKey = std::pair<const ExprLambda *, Symbol>;
+
+    struct NamedLambdaKeyHash
+    {
+        std::size_t operator()(const NamedLambdaKey & key) const noexcept
+        {
+            std::size_t seed = 0;
+            hash_combine(seed, key.first, key.second);
+            return seed;
+        }
+    };
+
+    /**
+     * Cache for `namedLambda()`.
+     */
+    const ref<boost::concurrent_flat_map<NamedLambdaKey, ExprLambda *, NamedLambdaKeyHash>> namedLambdas;
 
     LookupPath lookupPath;
 
