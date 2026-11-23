@@ -17,6 +17,7 @@
 #include "nix/expr/search-path.hh"
 #include "nix/expr/repl-exit-status.hh"
 #include "nix/util/ref.hh"
+#include "nix/util/std-hash.hh"
 #include "nix/expr/counter.hh"
 
 // For `NIX_USE_BOEHMGC`, and if that's set, `GC_THREADS`
@@ -453,12 +454,12 @@ public:
     }
 
     /**
-     * The lambda `lambda`, named `name`. A lambda that is the value of
-     * a dynamic attribute takes the attribute's name, and one lambda in
-     * the AST can be evaluated under many names, also at the same time
-     * on different threads. So this returns a copy per name instead of
-     * renaming the shared lambda. A curried lambda passes the name on
-     * to the lambdas in its body, as `ExprLambda::setName()` does.
+     * Return a copy of `lambda` named `name`. One lambda in the AST can
+     * be the value of a dynamic attribute under many names, so the name
+     * cannot be stored in the shared node. The copies live in `mem.exprs`
+     * and share the body and the formals of `lambda`. A curried lambda
+     * passes the name on to the lambda in its body, as
+     * `ExprLambda::setName()` does.
      */
     ExprLambda & namedLambda(ExprLambda & lambda, Symbol name);
 
@@ -508,21 +509,22 @@ private:
      */
     const ref<boost::concurrent_flat_map<SourcePath, ref<DocCommentMap>>> positionToDocComment;
 
-    struct NamedLambdaHash
+    using NamedLambdaKey = std::pair<const ExprLambda *, Symbol>;
+
+    struct NamedLambdaKeyHash
     {
-        std::size_t operator()(const std::pair<const ExprLambda *, Symbol> & key) const noexcept
+        std::size_t operator()(const NamedLambdaKey & key) const noexcept
         {
-            return std::hash<const ExprLambda *>{}(key.first) ^ (std::hash<Symbol>{}(key.second) * 0x9e3779b97f4a7c15);
+            std::size_t seed = 0;
+            hash_combine(seed, key.first, key.second);
+            return seed;
         }
     };
 
     /**
-     * Copies of lambdas defined as the value of a dynamic attribute,
-     * one per (lambda, attribute name). See `namedLambda()`.
+     * The copies that `namedLambda()` makes, by original lambda and name.
      */
-    const ref<
-        boost::concurrent_flat_map<std::pair<const ExprLambda *, Symbol>, std::unique_ptr<ExprLambda>, NamedLambdaHash>>
-        namedLambdas;
+    const ref<boost::concurrent_flat_map<NamedLambdaKey, ExprLambda *, NamedLambdaKeyHash>> namedLambdas;
 
     LookupPath lookupPath;
 

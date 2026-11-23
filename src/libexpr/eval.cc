@@ -1359,25 +1359,24 @@ Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
 
 ExprLambda & EvalState::namedLambda(ExprLambda & lambda, Symbol name)
 {
-    std::pair<const ExprLambda *, Symbol> key{&lambda, name};
+    NamedLambdaKey key{&lambda, name};
     ExprLambda * named = nullptr;
-    namedLambdas->cvisit(key, [&](const auto & i) { named = i.second.get(); });
+    namedLambdas->cvisit(key, [&](const auto & i) { named = i.second; });
     if (named)
         return *named;
 
-    auto copy = std::make_unique<ExprLambda>(lambda);
+    auto copy = mem.exprs.add<ExprLambda>(lambda);
     copy->name = name;
     if (auto body = dynamic_cast<ExprLambda *>(copy->body))
         copy->body = &namedLambda(*body, name);
-
-    /* Another thread may have made the same copy in the meantime; then
-       this one is dropped and both use the first. */
-    namedLambdas->try_emplace(key, std::move(copy));
-    namedLambdas->cvisit(key, [&](const auto & i) { named = i.second.get(); });
-
     if (debugRepl)
         if (auto env = getStaticEnv(lambda))
-            exprEnvs.insert(std::make_pair(named, env));
+            exprEnvs.insert(std::make_pair(copy, env));
+
+    /* Another thread may have made the same copy in the meantime. Then
+       both use the first, and this one stays unused in the arena. */
+    named = copy;
+    namedLambdas->try_emplace_or_cvisit(key, copy, [&](const auto & i) { named = i.second; });
     return *named;
 }
 
